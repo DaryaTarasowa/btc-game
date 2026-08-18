@@ -44,3 +44,26 @@ resource "aws_dynamodb_table" "guesses" {
     projection_type = "ALL"
   }
 }
+
+resource "aws_dynamodb_table" "price_history" {
+  name         = "btc-game-price-history"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "product"
+  range_key    = "sourceTimestamp"
+  table_class  = "STANDARD"
+
+  attribute {
+    name = "product"
+    type = "S"
+  }
+
+  attribute {
+    name = "sourceTimestamp"
+    type = "S"
+  }
+
+  ttl {
+    attribute_name = "expiresAt"
+    enabled        = true
+  }
+}
