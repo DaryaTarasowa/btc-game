@@ -2,13 +2,11 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "IdentifyDeploymentAccount",
       "Effect": "Allow",
       "Action": "sts:GetCallerIdentity",
       "Resource": "*"
     },
     {
-      "Sid": "ManageApplicationTables",
       "Effect": "Allow",
       "Action": [
         "dynamodb:CreateTable",
@@ -24,24 +22,26 @@
         "dynamodb:UpdateTimeToLive"
       ],
       "Resource": [
-        "arn:${AWS_PARTITION}:dynamodb:${AWS_REGION}:${AWS_ACCOUNT_ID}:table/btc-game-players",
-        "arn:${AWS_PARTITION}:dynamodb:${AWS_REGION}:${AWS_ACCOUNT_ID}:table/btc-game-players/index/*",
-        "arn:${AWS_PARTITION}:dynamodb:${AWS_REGION}:${AWS_ACCOUNT_ID}:table/btc-game-guesses",
-        "arn:${AWS_PARTITION}:dynamodb:${AWS_REGION}:${AWS_ACCOUNT_ID}:table/btc-game-guesses/index/*"
+        "arn:${AWS_PARTITION}:dynamodb:${AWS_REGION}:${AWS_ACCOUNT_ID}:table/btc-game-*",
+        "arn:${AWS_PARTITION}:dynamodb:${AWS_REGION}:${AWS_ACCOUNT_ID}:table/btc-game-*/index/*"
       ]
     },
     {
-      "Sid": "ManageApplicationRuntimeRole",
+      "Sid": "CreateBoundedApplicationRoles",
+      "Effect": "Allow",
+      "Action": "iam:CreateRole",
+      "Resource": "arn:${AWS_PARTITION}:iam::${AWS_ACCOUNT_ID}:role/btc-game-*",
+      "Condition": {
+        "ArnEquals": {
+          "iam:PermissionsBoundary": "arn:${AWS_PARTITION}:iam::${AWS_ACCOUNT_ID}:policy/btc-game-runtime-boundary"
+        }
+      }
+    },
+    {
+      "Sid": "ManageBoundedApplicationRoles",
       "Effect": "Allow",
       "Action": [
-        "iam:CreateRole",
-        "iam:DeleteRole",
         "iam:DeleteRolePolicy",
-        "iam:GetRole",
-        "iam:GetRolePolicy",
-        "iam:ListAttachedRolePolicies",
-        "iam:ListInstanceProfilesForRole",
-        "iam:ListRolePolicies",
         "iam:PutRolePolicy",
         "iam:TagRole",
         "iam:UntagRole",
@@ -49,21 +49,99 @@
         "iam:UpdateRole",
         "iam:UpdateRoleDescription"
       ],
-      "Resource": "arn:${AWS_PARTITION}:iam::${AWS_ACCOUNT_ID}:role/btc-game-create-player"
-    },
-    {
-      "Sid": "PassApplicationRuntimeRole",
-      "Effect": "Allow",
-      "Action": "iam:PassRole",
-      "Resource": "arn:${AWS_PARTITION}:iam::${AWS_ACCOUNT_ID}:role/btc-game-create-player",
+      "Resource": "arn:${AWS_PARTITION}:iam::${AWS_ACCOUNT_ID}:role/btc-game-*",
       "Condition": {
-        "StringEquals": {
-          "iam:PassedToService": "lambda.amazonaws.com"
+        "ArnEquals": {
+          "iam:PermissionsBoundary": "arn:${AWS_PARTITION}:iam::${AWS_ACCOUNT_ID}:policy/btc-game-runtime-boundary"
         }
       }
     },
     {
-      "Sid": "ManageApplicationFunction",
+      "Effect": "Allow",
+      "Action": [
+        "iam:GetRole",
+        "iam:GetRolePolicy",
+        "iam:ListAttachedRolePolicies",
+        "iam:ListInstanceProfilesForRole",
+        "iam:ListRolePolicies"
+      ],
+      "Resource": "arn:${AWS_PARTITION}:iam::${AWS_ACCOUNT_ID}:role/btc-game-*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "iam:DeleteRole",
+      "Resource": "arn:${AWS_PARTITION}:iam::${AWS_ACCOUNT_ID}:role/btc-game-*"
+    },
+    {
+      "Sid": "AttachRequiredRuntimeBoundary",
+      "Effect": "Allow",
+      "Action": "iam:PutRolePermissionsBoundary",
+      "Resource": "arn:${AWS_PARTITION}:iam::${AWS_ACCOUNT_ID}:role/btc-game-*",
+      "Condition": {
+        "ArnEquals": {
+          "iam:PermissionsBoundary": "arn:${AWS_PARTITION}:iam::${AWS_ACCOUNT_ID}:policy/btc-game-runtime-boundary"
+        }
+      }
+    },
+    {
+      "Sid": "DenyIncorrectRuntimeBoundary",
+      "Effect": "Deny",
+      "Action": [
+        "iam:CreateRole",
+        "iam:PutRolePermissionsBoundary"
+      ],
+      "Resource": "arn:${AWS_PARTITION}:iam::${AWS_ACCOUNT_ID}:role/btc-game-*",
+      "Condition": {
+        "ArnNotEquals": {
+          "iam:PermissionsBoundary": "arn:${AWS_PARTITION}:iam::${AWS_ACCOUNT_ID}:policy/btc-game-runtime-boundary"
+        }
+      }
+    },
+    {
+      "Sid": "DenyRuntimeBoundaryRemoval",
+      "Effect": "Deny",
+      "Action": "iam:DeleteRolePermissionsBoundary",
+      "Resource": "arn:${AWS_PARTITION}:iam::${AWS_ACCOUNT_ID}:role/btc-game-*"
+    },
+    {
+      "Sid": "ProtectRuntimeBoundaryPolicy",
+      "Effect": "Deny",
+      "Action": [
+        "iam:CreatePolicyVersion",
+        "iam:DeletePolicy",
+        "iam:DeletePolicyVersion",
+        "iam:SetDefaultPolicyVersion"
+      ],
+      "Resource": "arn:${AWS_PARTITION}:iam::${AWS_ACCOUNT_ID}:policy/btc-game-runtime-boundary"
+    },
+    {
+      "Sid": "PassBoundedApplicationRoles",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:${AWS_PARTITION}:iam::${AWS_ACCOUNT_ID}:role/btc-game-*",
+      "Condition": {
+        "ArnEquals": {
+          "iam:PermissionsBoundary": "arn:${AWS_PARTITION}:iam::${AWS_ACCOUNT_ID}:policy/btc-game-runtime-boundary"
+        },
+        "StringEquals": {
+          "iam:PassedToService": [
+            "lambda.amazonaws.com",
+            "ecs-tasks.amazonaws.com"
+          ]
+        }
+      }
+    },
+    {
+      "Effect": "Allow",
+      "Action": "iam:CreateServiceLinkedRole",
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "iam:AWSServiceName": "ecs.amazonaws.com"
+        }
+      }
+    },
+    {
       "Effect": "Allow",
       "Action": [
         "lambda:AddPermission",
@@ -78,10 +156,95 @@
         "lambda:UpdateFunctionCode",
         "lambda:UpdateFunctionConfiguration"
       ],
-      "Resource": "arn:${AWS_PARTITION}:lambda:${AWS_REGION}:${AWS_ACCOUNT_ID}:function:btc-game-create-player"
+      "Resource": "arn:${AWS_PARTITION}:lambda:${AWS_REGION}:${AWS_ACCOUNT_ID}:function:btc-game-*"
     },
     {
-      "Sid": "ManagePlayerApi",
+      "Effect": "Allow",
+      "Action": [
+        "ecs:CreateCluster",
+        "ecs:DeleteCluster",
+        "ecs:DescribeClusters",
+        "ecs:ListTagsForResource",
+        "ecs:TagResource",
+        "ecs:UntagResource"
+      ],
+      "Resource": "arn:${AWS_PARTITION}:ecs:${AWS_REGION}:${AWS_ACCOUNT_ID}:cluster/btc-game-*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ecs:CreateService",
+        "ecs:DeleteService",
+        "ecs:DescribeServices",
+        "ecs:ListTagsForResource",
+        "ecs:TagResource",
+        "ecs:UntagResource",
+        "ecs:UpdateService"
+      ],
+      "Resource": "arn:${AWS_PARTITION}:ecs:${AWS_REGION}:${AWS_ACCOUNT_ID}:service/btc-game-*/*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ecs:DeregisterTaskDefinition",
+        "ecs:DescribeTaskDefinition",
+        "ecs:ListTagsForResource",
+        "ecs:RegisterTaskDefinition",
+        "ecs:TagResource",
+        "ecs:UntagResource"
+      ],
+      "Resource": "arn:${AWS_PARTITION}:ecs:${AWS_REGION}:${AWS_ACCOUNT_ID}:task-definition/btc-game-*:*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:BatchGetImage",
+        "ecr:CompleteLayerUpload",
+        "ecr:CreateRepository",
+        "ecr:DeleteRepository",
+        "ecr:DescribeImages",
+        "ecr:DescribeRepositories",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:InitiateLayerUpload",
+        "ecr:ListImages",
+        "ecr:ListTagsForResource",
+        "ecr:PutImage",
+        "ecr:TagResource",
+        "ecr:UntagResource",
+        "ecr:UploadLayerPart"
+      ],
+      "Resource": "arn:${AWS_PARTITION}:ecr:${AWS_REGION}:${AWS_ACCOUNT_ID}:repository/btc-game-*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "ecr:GetAuthorizationToken",
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:DeleteLogGroup",
+        "logs:DeleteRetentionPolicy",
+        "logs:ListTagsForResource",
+        "logs:PutRetentionPolicy",
+        "logs:TagResource",
+        "logs:UntagResource"
+      ],
+      "Resource": "arn:${AWS_PARTITION}:logs:${AWS_REGION}:${AWS_ACCOUNT_ID}:log-group:/aws/ecs/btc-game-*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeVpcs",
+        "logs:DescribeLogGroups"
+      ],
+      "Resource": "*"
+    },
+    {
       "Effect": "Allow",
       "Action": [
         "apigateway:DELETE",
@@ -93,7 +256,6 @@
       "Resource": "arn:${AWS_PARTITION}:apigateway:${AWS_REGION}::/apis*"
     },
     {
-      "Sid": "ManageFrontendHosting",
       "Effect": "Allow",
       "Action": [
         "amplify:CreateApp",

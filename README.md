@@ -40,9 +40,25 @@ Install locally:
 
 ## AWS setup
 
-Terraform requires an IAM deployment user with permission to manage the application's AWS resources.
+Terraform uses a deployment identity that is separate from the runtime identities used by the application:
 
-The initial IAM setup must be performed once by an **AWS administrator**. If the deployment user is already configured, skip to [Log in to AWS](#log-in-to-aws).
+```text
+AWS administrator (one time)
+    -> creates and configures btc-game-developer
+    -> creates the runtime permissions-boundary policy
+    -> creates and attaches the deployment policy
+
+btc-game-developer
+    -> runs Terraform
+    -> Terraform creates btc-game-* application resources
+    -> Terraform creates least-privilege runtime roles with the required boundary
+```
+
+The boundary is a maximum permission set; it does not grant permissions by itself. Terraform assigns each runtime role a workload-specific policy, and the role receives only permissions allowed by both that policy and the boundary.
+
+The deployment user, its login configuration, the deployment policy, and the runtime boundary policy remain external bootstrap resources. Terraform does not create, import, update, or delete them.
+
+The initial IAM setup must be performed once by an **AWS administrator**. If the deployment user and both bootstrap policies are already configured, skip to [Log in to AWS](#log-in-to-aws). Existing installations that predate the runtime boundary require one final administrator update before Terraform can migrate the current runtime roles onto the boundary.
 
 <details>
 <summary>First-time IAM setup</summary>
@@ -67,54 +83,26 @@ Attach the AWS-managed policy:
 SignInLocalDevelopmentAccess
 ```
 
-### Create the application deployment policy
+### Create the runtime boundary and deployment policies
 
-The required deployment permissions are defined in:
+The external bootstrap policies are defined in:
 
 ```text
+terraform/bootstrap/btc-game-runtime-boundary-policy.template.json
 terraform/bootstrap/btc-game-developer-policy.template.json
 ```
 
-From the `terraform/` directory, while authenticated as an **AWS administrator**:
+While authenticated as an **AWS administrator**, run from the repository root:
 
 ```powershell
-$IamUserName = "btc-game-developer"
-$AwsRegion = "eu-central-1"
-$AwsPartition = "aws"
-$AwsAccountId = aws sts get-caller-identity --query Account --output text
-$PolicyName = "btc-game-developer"
-$RenderedPolicy = "bootstrap/btc-game-developer-policy.json"
-
-(Get-Content "bootstrap/btc-game-developer-policy.template.json" -Raw) `
-  .Replace('${AWS_PARTITION}', $AwsPartition) `
-  .Replace('${AWS_REGION}', $AwsRegion) `
-  .Replace('${AWS_ACCOUNT_ID}', $AwsAccountId) |
-  Set-Content $RenderedPolicy
+node scripts/bootstrap-aws.mjs --iam-user btc-game-developer --region eu-central-1
 ```
 
-Create the managed policy:
+The script verifies the active administrator identity, renders templates for the selected account and region, and creates or safely updates the `btc-game-runtime-boundary` and `btc-game-developer` customer-managed policies. It attaches only the deployment policy to the specified IAM user.
 
-```powershell
-$PolicyArn = aws iam create-policy `
-  --policy-name $PolicyName `
-  --policy-document "file://$RenderedPolicy" `
-  --query Policy.Arn `
-  --output text
-```
+The script handles IAM's managed-policy version limit by deleting only the oldest non-default version when a version slot is required. Temporary rendered policy files are removed automatically. The options shown above are also the defaults, so `node scripts/bootstrap-aws.mjs` is equivalent.
 
-Attach it to the deployment user:
-
-```powershell
-aws iam attach-user-policy `
-  --user-name $IamUserName `
-  --policy-arn $PolicyArn
-```
-
-Remove the generated local policy:
-
-```powershell
-Remove-Item $RenderedPolicy
-```
+After this bootstrap, normal Terraform additions using the supported `btc-game-*` DynamoDB, Lambda, IAM runtime-role, ECS/Fargate, ECR, logging, API Gateway, and Amplify scopes do not require administrator intervention. Adding a new AWS service or expanding the maximum permissions available to runtime workloads still requires an administrator to review and update the external boundary or deployment policy.
 
 </details>
 
@@ -174,7 +162,7 @@ terraform output
 From the repository root:
 
 ```powershell
-.\scripts\deploy-frontend.ps1
+node scripts/deploy-frontend.mjs
 ```
 
 The script builds the Vite application, reads the API and Amplify configuration from Terraform outputs, and deploys the frontend to Amplify.
@@ -182,7 +170,7 @@ The script builds the Vite application, reads the API and Amplify configuration 
 If dependencies are already installed:
 
 ```powershell
-.\scripts\deploy-frontend.ps1 -SkipInstall
+node scripts/deploy-frontend.mjs --skip-install
 ```
 
 ## Updating the application
@@ -198,7 +186,7 @@ terraform apply deployment.tfplan
 For frontend-only changes:
 
 ```powershell
-.\scripts\deploy-frontend.ps1 -SkipInstall
+node scripts/deploy-frontend.mjs --skip-install
 ```
 
 ### Verify the deployment

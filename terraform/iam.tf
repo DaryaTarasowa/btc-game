@@ -1,4 +1,10 @@
+data "aws_caller_identity" "current" {}
+
+data "aws_partition" "current" {}
+
 locals {
+  runtime_permissions_boundary_arn = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:policy/btc-game-runtime-boundary"
+
   lambda_trust_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -16,6 +22,7 @@ resource "aws_iam_role" "create_player" {
   description          = "Runtime role for the BTC game player-creation Lambda."
   assume_role_policy   = local.lambda_trust_policy
   max_session_duration = 3600
+  permissions_boundary = local.runtime_permissions_boundary_arn
 }
 
 resource "aws_iam_role_policy" "create_player_runtime" {

@@ -3,7 +3,11 @@ import { useState } from "react";
 const PLAYER_ID_KEY = "btc-game.playerId.v1";
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-function readStoredPlayerId() {
+interface PlayerResponse {
+  playerId?: unknown;
+}
+
+function readStoredPlayerId(): string | null {
   const value = localStorage.getItem(PLAYER_ID_KEY);
   return value && UUID_PATTERN.test(value) ? value : null;
 }
@@ -28,8 +32,8 @@ export default function App() {
         throw new Error(`Login failed (${response.status})`);
       }
 
-      const player = await response.json();
-      if (!player?.playerId || !UUID_PATTERN.test(player.playerId)) {
+      const player = (await response.json()) as PlayerResponse;
+      if (typeof player.playerId !== "string" || !UUID_PATTERN.test(player.playerId)) {
         throw new Error("The server returned an invalid player ID.");
       }
 
