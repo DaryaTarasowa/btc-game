@@ -1,7 +1,5 @@
 resource "aws_apigatewayv2_api" "player" {
-  count = var.enable_new_infrastructure ? 1 : 0
-
-  name          = "player-api"
+  name          = "btc-game-player-api"
   protocol_type = "HTTP"
 
   cors_configuration {
@@ -13,9 +11,7 @@ resource "aws_apigatewayv2_api" "player" {
 }
 
 resource "aws_apigatewayv2_integration" "create_player" {
-  count = var.enable_new_infrastructure ? 1 : 0
-
-  api_id                 = aws_apigatewayv2_api.player[0].id
+  api_id                 = aws_apigatewayv2_api.player.id
   integration_type       = "AWS_PROXY"
   integration_uri        = aws_lambda_function.create_player.invoke_arn
   payload_format_version = "2.0"
@@ -23,17 +19,13 @@ resource "aws_apigatewayv2_integration" "create_player" {
 }
 
 resource "aws_apigatewayv2_route" "create_player" {
-  count = var.enable_new_infrastructure ? 1 : 0
-
-  api_id    = aws_apigatewayv2_api.player[0].id
+  api_id    = aws_apigatewayv2_api.player.id
   route_key = "POST /players"
-  target    = "integrations/${aws_apigatewayv2_integration.create_player[0].id}"
+  target    = "integrations/${aws_apigatewayv2_integration.create_player.id}"
 }
 
 resource "aws_apigatewayv2_stage" "default" {
-  count = var.enable_new_infrastructure ? 1 : 0
-
-  api_id      = aws_apigatewayv2_api.player[0].id
+  api_id      = aws_apigatewayv2_api.player.id
   name        = "$default"
   auto_deploy = true
 
@@ -44,11 +36,9 @@ resource "aws_apigatewayv2_stage" "default" {
 }
 
 resource "aws_lambda_permission" "api_create_player" {
-  count = var.enable_new_infrastructure ? 1 : 0
-
   statement_id  = "AllowPlayerApiInvokeCreatePlayer"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.create_player.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.player[0].execution_arn}/*/POST/players"
+  source_arn    = "${aws_apigatewayv2_api.player.execution_arn}/*/POST/players"
 }
