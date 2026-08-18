@@ -1,0 +1,8 @@
+aws_region                = "eu-central-1"
+account_id                = "599243103143"
+enable_new_infrastructure = false
+
+# Required only when enable_new_infrastructure is true.
+github_repository_url = "https://github.com/OWNER/REPOSITORY"
+
+# Supply the setup token through TF_VAR_github_access_token instead of committing it.
