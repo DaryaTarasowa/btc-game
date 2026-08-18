@@ -1,0 +1,118 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "IdentifyDeploymentAccount",
+      "Effect": "Allow",
+      "Action": "sts:GetCallerIdentity",
+      "Resource": "*"
+    },
+    {
+      "Sid": "ManageApplicationTables",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:CreateTable",
+        "dynamodb:DeleteTable",
+        "dynamodb:DescribeContinuousBackups",
+        "dynamodb:DescribeTable",
+        "dynamodb:DescribeTimeToLive",
+        "dynamodb:ListTagsOfResource",
+        "dynamodb:TagResource",
+        "dynamodb:UntagResource",
+        "dynamodb:UpdateContinuousBackups",
+        "dynamodb:UpdateTable",
+        "dynamodb:UpdateTimeToLive"
+      ],
+      "Resource": [
+        "arn:${AWS_PARTITION}:dynamodb:${AWS_REGION}:${AWS_ACCOUNT_ID}:table/btc-game-players",
+        "arn:${AWS_PARTITION}:dynamodb:${AWS_REGION}:${AWS_ACCOUNT_ID}:table/btc-game-players/index/*",
+        "arn:${AWS_PARTITION}:dynamodb:${AWS_REGION}:${AWS_ACCOUNT_ID}:table/btc-game-guesses",
+        "arn:${AWS_PARTITION}:dynamodb:${AWS_REGION}:${AWS_ACCOUNT_ID}:table/btc-game-guesses/index/*"
+      ]
+    },
+    {
+      "Sid": "ManageApplicationRuntimeRole",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateRole",
+        "iam:DeleteRole",
+        "iam:DeleteRolePolicy",
+        "iam:GetRole",
+        "iam:GetRolePolicy",
+        "iam:ListAttachedRolePolicies",
+        "iam:ListInstanceProfilesForRole",
+        "iam:ListRolePolicies",
+        "iam:PutRolePolicy",
+        "iam:TagRole",
+        "iam:UntagRole",
+        "iam:UpdateAssumeRolePolicy",
+        "iam:UpdateRole",
+        "iam:UpdateRoleDescription"
+      ],
+      "Resource": "arn:${AWS_PARTITION}:iam::${AWS_ACCOUNT_ID}:role/btc-game-create-player"
+    },
+    {
+      "Sid": "PassApplicationRuntimeRole",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:${AWS_PARTITION}:iam::${AWS_ACCOUNT_ID}:role/btc-game-create-player",
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "lambda.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "ManageApplicationFunction",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:AddPermission",
+        "lambda:CreateFunction",
+        "lambda:DeleteFunction",
+        "lambda:Get*",
+        "lambda:ListTags",
+        "lambda:ListVersionsByFunction",
+        "lambda:RemovePermission",
+        "lambda:TagResource",
+        "lambda:UntagResource",
+        "lambda:UpdateFunctionCode",
+        "lambda:UpdateFunctionConfiguration"
+      ],
+      "Resource": "arn:${AWS_PARTITION}:lambda:${AWS_REGION}:${AWS_ACCOUNT_ID}:function:btc-game-create-player"
+    },
+    {
+      "Sid": "ManagePlayerApi",
+      "Effect": "Allow",
+      "Action": [
+        "apigateway:DELETE",
+        "apigateway:GET",
+        "apigateway:PATCH",
+        "apigateway:POST",
+        "apigateway:PUT"
+      ],
+      "Resource": "arn:${AWS_PARTITION}:apigateway:${AWS_REGION}::/apis*"
+    },
+    {
+      "Sid": "ManageFrontendHosting",
+      "Effect": "Allow",
+      "Action": [
+        "amplify:CreateApp",
+        "amplify:CreateBranch",
+        "amplify:CreateDeployment",
+        "amplify:DeleteApp",
+        "amplify:DeleteBranch",
+        "amplify:GetApp",
+        "amplify:GetBranch",
+        "amplify:GetJob",
+        "amplify:ListJobs",
+        "amplify:ListTagsForResource",
+        "amplify:TagResource",
+        "amplify:UntagResource",
+        "amplify:UpdateApp",
+        "amplify:UpdateBranch",
+        "amplify:StartDeployment"
+      ],
+      "Resource": "arn:${AWS_PARTITION}:amplify:${AWS_REGION}:${AWS_ACCOUNT_ID}:apps/*"
+    }
+  ]
+}
