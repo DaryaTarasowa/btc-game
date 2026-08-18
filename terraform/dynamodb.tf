@@ -1,5 +1,5 @@
 resource "aws_dynamodb_table" "players" {
-  name         = "players"
+  name         = "btc-game-players"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "playerId"
   table_class  = "STANDARD"
@@ -11,7 +11,7 @@ resource "aws_dynamodb_table" "players" {
 }
 
 resource "aws_dynamodb_table" "guesses" {
-  name         = "guesses"
+  name         = "btc-game-guesses"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "playerId"
   range_key    = "createdAt"
@@ -38,7 +38,7 @@ resource "aws_dynamodb_table" "guesses" {
   }
 
   global_secondary_index {
-    name            = "status-eligibleAt-index"
+    name            = "status-eligible-at-index"
     hash_key        = "status"
     range_key       = "eligibleAt"
     projection_type = "ALL"

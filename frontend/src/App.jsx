@@ -18,7 +18,7 @@ export default function App() {
     setError("");
 
     try {
-      const response = await fetch(import.meta.env.VITE_CREATE_USER_URL, {
+      const response = await fetch(import.meta.env.VITE_CREATE_PLAYER_URL, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: "{}",
