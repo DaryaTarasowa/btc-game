@@ -1,0 +1,7 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+createPlayer.zip
+.terraform-tmp/
+frontend.zip

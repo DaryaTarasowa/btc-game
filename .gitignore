@@ -1,0 +1,71 @@
+# Local Codex scratch, credentials, installers, inspection output, and tools
+/work/
+/outputs/
+
+# AWS credentials and local CLI configuration
+.aws/
+**/.aws/
+**/.aws-codex/
+credentials
+*.credentials
+
+# GitHub/API tokens and local secret material
+.secrets/
+secrets/
+*.secret
+*.token
+.npmrc
+.pnpmrc
+.yarnrc.yml
+*.pem
+*.p12
+*.pfx
+
+# Environment files may contain secrets
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
+
+# JavaScript dependencies and generated frontend output
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+coverage/
+**/coverage/
+*.log
+
+# Terraform local state, plans, caches, and local variables
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+*.tfvars.json
+*.auto.tfvars
+*.auto.tfvars.json
+!*.tfvars.example
+!**/*.tfvars.example
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# Generated Lambda archives and temporary import artifacts
+/terraform/createPlayer.zip
+/terraform/import-artifacts/
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~
