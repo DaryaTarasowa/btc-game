@@ -1,4 +1,4 @@
-import type { PricePublisher } from "./livePricePublisher.js";
+import type { PricePublisher } from "./types.js";
 import { MarketPriceGuard } from "./marketPriceGuard.js";
 import {
   PriceHistoryWriter,
