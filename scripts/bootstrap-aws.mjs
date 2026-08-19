@@ -1,3 +1,29 @@
+/**
+ * Bootstraps the AWS IAM permissions required to deploy the BTC game.
+ *
+ * Run this script using an AWS administrator identity when the application's
+ * deployment permissions or runtime permissions boundary change.
+ *
+ * The script:
+ * - renders the IAM policy templates for the current AWS account and region;
+ * - creates or updates the `btc-game-developer` managed policy;
+ * - creates or updates the `btc-game-runtime-boundary` managed policy;
+ * - attaches the deployment policy to the `btc-game-developer` IAM user;
+ * - manages IAM policy versions automatically.
+ *
+ * This script does not deploy application infrastructure. After bootstrap,
+ * switch to the `btc-game-developer` identity and use Terraform/deployment
+ * tooling normally.
+ *
+ * Example:
+ *
+ *   AWS_PROFILE=root node scripts/bootstrap-aws.mjs
+ *
+ * Then:
+ *
+ *   export AWS_PROFILE=btc-game-developer
+ *   terraform ...
+ */
 import { spawnSync } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -22,7 +48,8 @@ try {
     await bootstrap(options);
   }
 } catch (error) {
-  const message = error instanceof Error ? error.message : "Unknown bootstrap error.";
+  const message =
+    error instanceof Error ? error.message : "Unknown bootstrap error.";
   console.error(`AWS bootstrap failed: ${message}`);
   process.exitCode = 1;
 }
@@ -34,7 +61,9 @@ async function bootstrap({ iamUser, region }) {
   const partition = identityArn.split(":")[1];
 
   if (!partition || !/^[a-z0-9-]+$/.test(partition)) {
-    throw new Error(`Could not determine the AWS partition from the active identity.`);
+    throw new Error(
+      `Could not determine the AWS partition from the active identity.`,
+    );
   }
 
   const boundaryPolicyArn = `arn:${partition}:iam::${accountId}:policy/${BOUNDARY_POLICY_NAME}`;
@@ -51,7 +80,9 @@ async function bootstrap({ iamUser, region }) {
   console.log(`Verifying deployment IAM user ${iamUser}...`);
   runAwsJson(["iam", "get-user", "--user-name", iamUser]);
 
-  const temporaryDirectory = await mkdtemp(join(tmpdir(), "btc-game-bootstrap-"));
+  const temporaryDirectory = await mkdtemp(
+    join(tmpdir(), "btc-game-bootstrap-"),
+  );
 
   try {
     const replacements = {
@@ -60,7 +91,10 @@ async function bootstrap({ iamUser, region }) {
       "${AWS_ACCOUNT_ID}": accountId,
     };
     const renderedBoundaryPath = await renderPolicy(
-      join(bootstrapDirectory, "btc-game-runtime-boundary-policy.template.json"),
+      join(
+        bootstrapDirectory,
+        "btc-game-runtime-boundary-policy.template.json",
+      ),
       join(temporaryDirectory, "btc-game-runtime-boundary-policy.json"),
       replacements,
     );
@@ -110,14 +144,18 @@ async function renderPolicy(templatePath, outputPath, replacements) {
 
   const unresolved = rendered.match(/\$\{AWS_[A-Z_]+\}/g);
   if (unresolved) {
-    throw new Error(`Unresolved template values in ${templatePath}: ${unresolved.join(", ")}`);
+    throw new Error(
+      `Unresolved template values in ${templatePath}: ${unresolved.join(", ")}`,
+    );
   }
 
   let policy;
   try {
     policy = JSON.parse(rendered);
   } catch (error) {
-    throw new Error(`Rendered policy is invalid JSON (${templatePath}): ${error.message}`);
+    throw new Error(
+      `Rendered policy is invalid JSON (${templatePath}): ${error.message}`,
+    );
   }
 
   const compactPolicy = JSON.stringify(policy);
@@ -160,18 +198,24 @@ async function createOrUpdatePolicy({ name, arn, documentPath, description }) {
     "--policy-arn",
     arn,
   ]);
-  const versions = Array.isArray(versionsResponse.Versions) ? versionsResponse.Versions : [];
+  const versions = Array.isArray(versionsResponse.Versions)
+    ? versionsResponse.Versions
+    : [];
 
   if (versions.length >= 5) {
     const oldestNonDefault = versions
       .filter((version) => version.IsDefaultVersion !== true)
-      .sort((left, right) => String(left.CreateDate).localeCompare(String(right.CreateDate)))[0];
+      .sort((left, right) =>
+        String(left.CreateDate).localeCompare(String(right.CreateDate)),
+      )[0];
 
     if (!oldestNonDefault || typeof oldestNonDefault.VersionId !== "string") {
       throw new Error(`Cannot free a policy-version slot for ${name}.`);
     }
 
-    console.log(`Deleting oldest non-default version ${oldestNonDefault.VersionId} of ${name}...`);
+    console.log(
+      `Deleting oldest non-default version ${oldestNonDefault.VersionId} of ${name}...`,
+    );
     runAws([
       "iam",
       "delete-policy-version",
@@ -243,7 +287,9 @@ function parseAwsJson(output, arguments_) {
   try {
     return JSON.parse(output);
   } catch (error) {
-    throw new Error(`AWS CLI returned invalid JSON for aws ${arguments_.join(" ")}: ${error.message}`);
+    throw new Error(
+      `AWS CLI returned invalid JSON for aws ${arguments_.join(" ")}: ${error.message}`,
+    );
   }
 }
 
@@ -252,7 +298,8 @@ function extractAwsErrorCode(stderr) {
 }
 
 function formatAwsFailure(arguments_, result) {
-  const detail = result.stderr.trim() || `exit code ${result.status ?? "unknown"}`;
+  const detail =
+    result.stderr.trim() || `exit code ${result.status ?? "unknown"}`;
   return `aws ${arguments_.join(" ")} failed: ${detail}`;
 }
 

@@ -39,6 +39,8 @@ Install locally:
 - Node.js
 - pnpm
 
+## Local development setup
+
 ## AWS setup
 
 Terraform uses a deployment identity that is separate from the runtime identities used by the application:
@@ -96,7 +98,7 @@ terraform/bootstrap/btc-game-developer-policy.template.json
 While authenticated as an **AWS administrator**, run from the repository root:
 
 ```powershell
-node scripts/bootstrap-aws.mjs --iam-user btc-game-developer --region eu-central-1
+node scripts/bootstrap-aws.mjs --iam-user <btc-game-developer> --region eu-central-1
 ```
 
 The script verifies the active administrator identity, renders templates for the selected account and region, and creates or safely updates the `btc-game-runtime-boundary` and `btc-game-developer` customer-managed policies. It attaches only the deployment policy to the specified IAM user.
@@ -118,6 +120,12 @@ aws login --profile btc-game-developer
 ```
 
 Complete the sign-in flow in the browser and select the profile for the current PowerShell session:
+
+```powershell
+export AWS_PROFILE="btc-game-developer"
+```
+
+or
 
 ```powershell
 $env:AWS_PROFILE = "btc-game-developer"
@@ -180,9 +188,78 @@ node scripts/deploy-frontend.mjs --skip-install
 
 Terraform owns the ECS cluster, service shell, networking, IAM, logs, and ECR repository. Application releases own task definitions, the immutable revision selected by the service, and its operational desired count. Terraform intentionally ignores the latter two service attributes, so an infrastructure apply cannot roll back a release or stop the consumer.
 
-For a brand-new environment, first apply the foundational resources through ECR, IAM, logging, and networking. Run the release preparation command below, followed by `node scripts/deploy-price-consumer.mjs --register-only --base-task-definition=<seed-family:revision>`. The base definition supplies the infrastructure-owned task settings; the script replaces only its container image. Register-only mode prints the Terraform command that creates the service with the one-time `price_consumer_initial_task_definition_arn` value. After the service exists, omit the variable permanently. It is ignored for an existing service, and normal infrastructure plans do not receive or reconcile application image tags or task-definition revisions.
+#### First deployment in a new environment
 
-After the initial infrastructure exists, commit application changes and prepare an immutable Git-SHA release from the repository root:
+The normal release script assumes that the ECS service already has a task definition. Bootstrap a new environment once:
+
+1. Apply the reviewed Terraform foundation for ECR, the ECS cluster, roles, networking, and logs.
+2. Build the consumer and push its first immutable Git-SHA image:
+
+   **Linux:**
+
+   ```bash
+   repository=$(terraform -chdir=terraform output -raw price_consumer_ecr_repository_url)
+   sha=$(git rev-parse HEAD)
+   docker build --tag "btc-game-price-consumer:$sha" backend/price-consumer
+   aws ecr get-login-password | docker login --username AWS --password-stdin "${repository%%/*}"
+   docker tag "btc-game-price-consumer:$sha" "${repository}:$sha"
+   docker push "${repository}:$sha"
+   ```
+
+   **Windows (PowerShell):**
+
+   ```powershell
+   $repository = terraform -chdir=terraform output -raw price_consumer_ecr_repository_url
+   $sha = git rev-parse HEAD
+   docker build --tag "btc-game-price-consumer:$sha" backend/price-consumer
+   aws ecr get-login-password | docker login --username AWS --password-stdin ($repository.Split('/')[0])
+   docker tag "btc-game-price-consumer:$sha" "${repository}:$sha"
+   docker push "${repository}:$sha"
+   ```
+
+3. Create an initial ECS task-definition JSON using the Terraform-created execution role, task role, log group, and price-history table, then register it once:
+
+   **Linux:**
+
+   ```bash
+   task_definition_arn=$(
+     aws ecs register-task-definition \
+       --cli-input-json file://initial-price-consumer-task-definition.json \
+       --query taskDefinition.taskDefinitionArn \
+       --output text \
+       --no-cli-pager
+   )
+   ```
+
+   **Windows (PowerShell):**
+
+   ```powershell
+   $taskDefinitionArn = aws ecs register-task-definition `
+     --cli-input-json file://initial-price-consumer-task-definition.json `
+     --query taskDefinition.taskDefinitionArn `
+     --output text `
+     --no-cli-pager
+   ```
+
+4. Create the Terraform-owned ECS service using that one-time ARN:
+
+   **Linux:**
+
+   ```bash
+   terraform -chdir=terraform apply -var="price_consumer_initial_task_definition_arn=${task_definition_arn}"
+   ```
+
+   **Windows (PowerShell):**
+
+   ```powershell
+   terraform -chdir=terraform apply -var "price_consumer_initial_task_definition_arn=$taskDefinitionArn"
+   ```
+
+After the service exists, omit the initial ARN variable. Normal Terraform plans ignore release-selected task-definition and desired-count changes.
+
+#### Normal releases
+
+Commit application changes and prepare an immutable Git-SHA release from the repository root:
 
 ```powershell
 node scripts/deploy-price-consumer.mjs
@@ -194,7 +271,7 @@ This builds the container locally without changing infrastructure. Review the re
 node scripts/deploy-price-consumer.mjs --apply
 ```
 
-The apply mode authenticates Docker using the current AWS CLI identity, pushes the immutable image, reads the service's current task definition, replaces only the consumer image, and registers the resulting revision. It updates the ECS service to that revision with desired count one and reports success only after ECS reaches a stable state. It does not run Terraform. No credentials are stored in the image or script.
+The apply mode authenticates Docker using the current AWS CLI identity, pushes the immutable image, reads the service's current task definition, replaces only the consumer image, and registers the resulting revision. It updates the ECS service to that revision with desired count one and reports success when the new PRIMARY task is running with nothing pending. Older zero-task deployments do not delay completion. It does not run Terraform. No credentials are stored in the image or script.
 
 ## Updating the application
 
