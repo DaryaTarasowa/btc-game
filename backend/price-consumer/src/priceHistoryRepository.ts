@@ -7,7 +7,7 @@ import {
 
 import type { MarketPriceEventData } from "./types.js";
 
-export const PRICE_HISTORY_RETENTION_SECONDS = 10 * 60;
+export const PRICE_HISTORY_RETENTION_SECONDS = 10 * 60 * 60; // how long the records should be kept in the table, in seconds
 
 export interface PriceHistoryItem {
   product: string;
