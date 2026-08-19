@@ -11,13 +11,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@aws-amplify/api": "^6.3.29",
     "@tanstack/react-query": "^5.85.5",
     "@tanstack/react-router": "^1.131.35",
     "@vitejs/plugin-react": "latest",
-    "vite": "latest",
+    "aws-amplify": "^6.20.0",
+    "lightweight-charts": "^5.0.8",
     "react": "latest",
     "react-dom": "latest",
-    "lightweight-charts": "^5.0.8",
+    "vite": "latest",
     "zod": "^4.1.5"
   },
   "devDependencies": {

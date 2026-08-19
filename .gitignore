@@ -37,6 +37,7 @@ dist/
 coverage/
 **/coverage/
 *.log
+.pnpm-store/
 
 # Terraform local state, plans, caches, and local variables
 **/.terraform/

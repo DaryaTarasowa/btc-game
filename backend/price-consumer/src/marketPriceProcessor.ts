@@ -23,7 +23,7 @@ export interface MarketPriceProcessorSettings {
 export class MarketPriceProcessor {
   private readonly guard = new MarketPriceGuard();
   private readonly pending = new Set<Promise<void>>();
-  private droppedMarketEvents = 0;
+  private nonIncreasingEventTimestamps = 0;
   private stopping = false;
   private writeFailed = false;
 
@@ -48,8 +48,13 @@ export class MarketPriceProcessor {
   }
 
   public process(marketPrice: MarketPriceEventData): void {
-    if (this.stopping || this.guard.shouldSkip(marketPrice)) {
-      if (!this.stopping) this.logDroppedEvent(marketPrice);
+    if (this.stopping) return;
+
+    const guardResult = this.guard.evaluate(marketPrice);
+    if (guardResult !== "accepted") {
+      if (guardResult === "non_increasing_event_timestamp") {
+        this.logNonIncreasingEventTimestamp(marketPrice);
+      }
       return;
     }
 
@@ -96,21 +101,23 @@ export class MarketPriceProcessor {
     }
   }
 
-  // Log a warning for dropped market events, but only for the first and every 100th dropped event.
-  private logDroppedEvent(marketPrice: MarketPriceEventData): void {
-    this.droppedMarketEvents += 1;
+  // Log only the first and every 100th timestamp-order violation.
+  private logNonIncreasingEventTimestamp(
+    marketPrice: MarketPriceEventData,
+  ): void {
+    this.nonIncreasingEventTimestamps += 1;
     if (
-      this.droppedMarketEvents !== 1 &&
-      this.droppedMarketEvents % 100 !== 0
+      this.nonIncreasingEventTimestamps !== 1 &&
+      this.nonIncreasingEventTimestamps % 100 !== 0
     ) {
       return;
     }
 
     this.log("warn", "market_event_dropped", {
-      reason: "non_increasing_source_timestamp",
+      reason: "non_increasing_event_timestamp",
       product: marketPrice.product,
-      sourceTimestamp: marketPrice.eventTimestamp,
-      droppedCount: this.droppedMarketEvents,
+      eventTimestamp: marketPrice.eventTimestamp,
+      droppedCount: this.nonIncreasingEventTimestamps,
     });
   }
 }
