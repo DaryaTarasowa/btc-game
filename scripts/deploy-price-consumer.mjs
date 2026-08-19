@@ -38,7 +38,9 @@ function prepareRelease() {
     capture: true,
   }).trim();
   if (!/^[0-9a-f]{40}$/.test(imageTag)) {
-    throw new Error("Could not determine a full Git commit SHA for the image tag.");
+    throw new Error(
+      "Could not determine a full Git commit SHA for the image tag.",
+    );
   }
 
   const repositoryUrl = terraformOutput("price_consumer_ecr_repository_url");
@@ -52,7 +54,9 @@ function prepareRelease() {
     "utf8",
   );
   console.log(`Saved release metadata to ${releasePath}`);
-  console.log("Review it, then run: node scripts/deploy-price-consumer.mjs --apply");
+  console.log(
+    "Review it, then run: node scripts/deploy-price-consumer.mjs --apply",
+  );
 }
 
 function applyRelease() {
@@ -77,6 +81,7 @@ function applyRelease() {
   const registry = release.repositoryUrl.split("/")[0];
   const cluster = terraformOutput("price_consumer_ecs_cluster_name");
   const service = terraformOutput("price_consumer_ecs_service_name");
+  const liveEndpoint = terraformOutput("live_price_event_http_endpoint");
 
   const password = run("aws", ["ecr", "get-login-password"], { capture: true });
   run("docker", ["login", "--username", "AWS", "--password-stdin", registry], {
@@ -123,7 +128,11 @@ function applyRelease() {
       { capture: true },
     ),
   );
-  const registration = registrationWithImage(described, remoteImage);
+  const registration = registrationForRelease(
+    described,
+    remoteImage,
+    liveEndpoint,
+  );
   const taskDefinition = run(
     "aws",
     [
@@ -164,7 +173,15 @@ function applyRelease() {
   console.log(`Deployed price-consumer image ${remoteImage}.`);
 }
 
-function registrationWithImage(taskDefinition, image) {
+function setEnvironmentVariable(environment = [], name, value) {
+  const withoutExisting = environment.filter(
+    (variable) => variable.name !== name,
+  );
+
+  return [...withoutExisting, { name, value }];
+}
+
+function registrationForRelease(taskDefinition, image, liveEndpoint) {
   const {
     taskDefinitionArn: _arn,
     revision: _revision,
@@ -182,11 +199,21 @@ function registrationWithImage(taskDefinition, image) {
     (container) => {
       if (container.name !== "price-consumer") return container;
       replaced = true;
-      return { ...container, image };
+      return {
+        ...container,
+        image,
+        environment: setEnvironmentVariable(
+          container.environment,
+          "APPSYNC_EVENTS_ENDPOINT",
+          liveEndpoint,
+        ),
+      };
     },
   );
   if (!replaced) {
-    throw new Error('Current task definition has no "price-consumer" container.');
+    throw new Error(
+      'Current task definition has no "price-consumer" container.',
+    );
   }
   return registration;
 }
@@ -259,9 +286,12 @@ function run(command, arguments_, options = {}) {
           ? "inherit"
           : ["pipe", "inherit", "inherit"],
   });
-  if (result.error) throw new Error(`Could not run ${command}: ${result.error.message}`);
+  if (result.error)
+    throw new Error(`Could not run ${command}: ${result.error.message}`);
   if (result.status !== 0) {
-    throw new Error(`${command} failed with exit code ${result.status ?? "unknown"}.`);
+    throw new Error(
+      `${command} failed with exit code ${result.status ?? "unknown"}.`,
+    );
   }
   return result.stdout ?? "";
 }
