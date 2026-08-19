@@ -28,6 +28,23 @@ const timeFormatter = new Intl.DateTimeFormat(undefined, {
   second: "2-digit",
 });
 
+function toChartData(prices: MarketPrice[]) {
+  const points = new Map<number, MarketPrice>();
+
+  for (const price of prices) {
+    const time = Math.floor(Date.parse(price.eventTimestamp) / 1000);
+    points.set(time, price);
+  }
+
+  return [...points.entries()]
+    .sort(([left], [right]) => left - right)
+    .map(([time, price]) => ({
+      time: time as UTCTimestamp,
+      value: Number(price.price),
+      eventTimestamp: price.eventTimestamp,
+    }));
+}
+
 export function PriceChart({ prices }: PriceChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
@@ -53,8 +70,14 @@ export function PriceChart({ prices }: PriceChartProps) {
       },
       crosshair: {
         mode: CrosshairMode.Normal,
-        vertLine: { color: "rgba(247, 147, 26, 0.65)", labelBackgroundColor: "#f7931a" },
-        horzLine: { color: "rgba(247, 147, 26, 0.4)", labelBackgroundColor: "#f7931a" },
+        vertLine: {
+          color: "rgba(247, 147, 26, 0.65)",
+          labelBackgroundColor: "#f7931a",
+        },
+        horzLine: {
+          color: "rgba(247, 147, 26, 0.4)",
+          labelBackgroundColor: "#f7931a",
+        },
       },
       rightPriceScale: {
         borderColor: "rgba(255, 255, 255, 0.1)",
@@ -67,7 +90,9 @@ export function PriceChart({ prices }: PriceChartProps) {
         secondsVisible: false,
         rightOffset: 2,
       },
-      localization: { priceFormatter: (price: number) => priceFormatter.format(price) },
+      localization: {
+        priceFormatter: (price: number) => priceFormatter.format(price),
+      },
       handleScale: { axisPressedMouseMove: false },
     });
 
@@ -109,7 +134,8 @@ export function PriceChart({ prices }: PriceChartProps) {
     });
 
     const resizeObserver = new ResizeObserver(([entry]) => {
-      if (entry) chart.applyOptions({ width: Math.floor(entry.contentRect.width) });
+      if (entry)
+        chart.applyOptions({ width: Math.floor(entry.contentRect.width) });
     });
     resizeObserver.observe(container);
 
@@ -126,15 +152,19 @@ export function PriceChart({ prices }: PriceChartProps) {
     const chart = chartRef.current;
     if (!series || !chart) return;
 
+    const chartData = toChartData(prices);
+
     timestampsRef.current = new Map(
-      prices.map((point) => [Math.floor(Date.parse(point.eventTimestamp) / 1000), point.eventTimestamp]),
+      chartData.map((point) => [point.time, point.eventTimestamp]),
     );
+
     series.setData(
-      prices.map((point) => ({
-        time: Math.floor(Date.parse(point.eventTimestamp) / 1000) as UTCTimestamp,
-        value: Number(point.price),
+      chartData.map(({ time, value }) => ({
+        time,
+        value,
       })),
     );
+
     chart.timeScale().fitContent();
   }, [prices]);
 
@@ -144,12 +174,16 @@ export function PriceChart({ prices }: PriceChartProps) {
     <section className="price-chart" aria-label="BTC to USD price chart">
       <header className="price-chart__header">
         <div>
-          <p className="price-chart__symbol"><span aria-hidden="true">₿</span> BTC / USD</p>
+          <p className="price-chart__symbol">
+            <span aria-hidden="true">₿</span> BTC / USD
+          </p>
           <p className="price-chart__window">Stored market history · 10 min</p>
         </div>
         <div className="price-chart__latest">
           <span>Latest price</span>
-          <strong>{latest ? priceFormatter.format(Number(latest.price)) : "—"}</strong>
+          <strong>
+            {latest ? priceFormatter.format(Number(latest.price)) : "—"}
+          </strong>
         </div>
       </header>
       <div className="price-chart__canvas" ref={containerRef}>

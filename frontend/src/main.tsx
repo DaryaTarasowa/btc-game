@@ -5,6 +5,19 @@ import App from "./App";
 import { PlayerProvider } from "./context/PlayerContext";
 import "./styles.css";
 
+import { Amplify } from "aws-amplify";
+
+Amplify.configure({
+  API: {
+    Events: {
+      endpoint: import.meta.env.VITE_APPSYNC_EVENTS_ENDPOINT,
+      region: "eu-central-1",
+      defaultAuthMode: "apiKey",
+      apiKey: import.meta.env.VITE_APPSYNC_API_KEY,
+    },
+  },
+});
+
 const rootElement = document.getElementById("root");
 const queryClient = new QueryClient();
 

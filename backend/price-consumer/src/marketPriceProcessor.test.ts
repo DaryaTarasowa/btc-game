@@ -47,6 +47,7 @@ class FakePublisher implements PricePublisher {
 interface LogEntry {
   level: string;
   event: string;
+  details?: Record<string, unknown>;
 }
 
 async function createProcessor(
@@ -54,7 +55,8 @@ async function createProcessor(
   publisher = new FakePublisher(),
 ) {
   const logs: LogEntry[] = [];
-  const log: Logger = (level, event) => logs.push({ level, event });
+  const log: Logger = (level, event, details) =>
+    logs.push({ level, event, ...(details ? { details } : {}) });
   const processor = await MarketPriceProcessor.create({
     product: "BTC-USD",
     repository,
@@ -65,7 +67,7 @@ async function createProcessor(
 }
 
 test("rejects out-of-order events before persistence", async () => {
-  const { processor, repository } = await createProcessor();
+  const { processor, repository, logs } = await createProcessor();
   processor.process(marketPrice("100", "2026-08-19T10:00:01.000Z"));
   processor.process(marketPrice("101", "2026-08-19T10:00:00.000Z"));
   await processor.stop();
@@ -74,6 +76,31 @@ test("rejects out-of-order events before persistence", async () => {
     repository.writes.map((value) => value.price),
     ["100"],
   );
+  assert.deepEqual(logs, [
+    {
+      level: "warn",
+      event: "market_event_dropped",
+      details: {
+        reason: "non_increasing_event_timestamp",
+        product: "BTC-USD",
+        eventTimestamp: "2026-08-19T10:00:00.000Z",
+        droppedCount: 1,
+      },
+    },
+  ]);
+});
+
+test("does not warn when a newer event has an unchanged price", async () => {
+  const { processor, repository, logs } = await createProcessor();
+  processor.process(marketPrice("100", "2026-08-19T10:00:00.000Z"));
+  processor.process(marketPrice("100", "2026-08-19T10:00:01.000Z"));
+  await processor.stop();
+
+  assert.deepEqual(
+    repository.writes.map((value) => value.eventTimestamp),
+    ["2026-08-19T10:00:00.000Z"],
+  );
+  assert.deepEqual(logs, []);
 });
 
 test("passes accepted events to history and publishes stored points", async () => {

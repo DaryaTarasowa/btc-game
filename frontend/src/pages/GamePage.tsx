@@ -2,11 +2,12 @@ import { GameControls } from "../components/GameControls/GameControls";
 import { LoginButton } from "../components/LoginButton/LoginButton";
 import { PriceChart } from "../components/PriceChart/PriceChart";
 import { usePlayer } from "../context/usePlayer";
-import { useRecentPrices } from "../queries/useRecentPrices";
+import { useLivePrices, useRecentPrices } from "../queries/useRecentPrices";
 
 export function GamePage() {
   const { playerId } = usePlayer();
   const recentPrices = useRecentPrices();
+  useLivePrices();
   const prices = recentPrices.data ?? [];
 
   return (
@@ -15,7 +16,9 @@ export function GamePage() {
         <p className="eyebrow">PLAYER</p>
         <h1>{playerId ? "Place your call" : "Ready to play?"}</h1>
         {playerId ? (
-          <p className="identity">Signed in as <strong>{playerId}</strong></p>
+          <p className="identity">
+            Signed in as <strong>{playerId}</strong>
+          </p>
         ) : (
           <LoginButton />
         )}
@@ -36,7 +39,9 @@ export function GamePage() {
         ) : prices.length === 0 ? (
           <div className="market-state">
             <strong>No recent BTC prices</strong>
-            <span>The market feed has not stored any trades in the last 10 minutes.</span>
+            <span>
+              The market feed has not stored any trades in the last 10 minutes.
+            </span>
           </div>
         ) : (
           <PriceChart prices={prices} />
