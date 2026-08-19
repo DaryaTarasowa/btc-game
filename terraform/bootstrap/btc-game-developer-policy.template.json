@@ -109,9 +109,6 @@
       "Action": "iam:PassRole",
       "Resource": "arn:${AWS_PARTITION}:iam::${AWS_ACCOUNT_ID}:role/btc-game-*",
       "Condition": {
-        "ArnEquals": {
-          "iam:PermissionsBoundary": "arn:${AWS_PARTITION}:iam::${AWS_ACCOUNT_ID}:policy/btc-game-runtime-boundary"
-        },
         "StringEquals": {
           "iam:PassedToService": [
             "lambda.amazonaws.com",
