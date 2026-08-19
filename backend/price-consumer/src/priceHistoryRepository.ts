@@ -33,7 +33,7 @@ export function toPriceHistoryItem(
   };
 }
 
-export class DynamoDbPriceHistoryRepository {
+export class PriceHistoryRepository {
   private readonly client: DynamoDBDocumentClient;
 
   public constructor(

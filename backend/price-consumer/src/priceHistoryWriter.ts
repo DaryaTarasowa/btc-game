@@ -50,7 +50,6 @@ export class PriceHistoryWriter {
 
       await this.repository.put(marketPrice);
       this.lastStoredSourceTimestamp = marketPrice.eventTimestamp;
-
       return "stored";
     });
 
