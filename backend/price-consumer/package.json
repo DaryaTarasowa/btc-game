@@ -12,9 +12,13 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@aws-crypto/sha256-js": "^5.2.0",
     "@aws-sdk/client-dynamodb": "^3.864.0",
+    "@aws-sdk/credential-provider-node": "^3.972.80",
+    "@aws-sdk/credential-providers": "^3.1113.0",
     "@aws-sdk/lib-dynamodb": "^3.864.0",
-    "ob-appsync-events-request": "^0.0.7",
+    "@smithy/protocol-http": "^5.6.2",
+    "@smithy/signature-v4": "^5.7.2",
     "ws": "^8.18.3"
   },
   "devDependencies": {

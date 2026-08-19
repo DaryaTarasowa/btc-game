@@ -1,11 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { LivePricePublisher } from "./livePricePublisher.js";
-import {
-  MarketPriceProcessor,
-  type Logger,
-} from "./marketPriceProcessor.js";
+import type { PricePublisher } from "./livePricePublisher.js";
+import { MarketPriceProcessor, type Logger } from "./marketPriceProcessor.js";
 import type { PriceHistoryRepository } from "./priceHistoryWriter.js";
 import type { MarketPriceEventData } from "./types.js";
 
@@ -37,7 +34,7 @@ class FakeRepository implements PriceHistoryRepository {
   }
 }
 
-class FakePublisher implements LivePricePublisher {
+class FakePublisher implements PricePublisher {
   public readonly published: MarketPriceEventData[] = [];
   public failure: Error | undefined;
 
@@ -73,7 +70,10 @@ test("rejects out-of-order events before persistence", async () => {
   processor.process(marketPrice("101", "2026-08-19T10:00:00.000Z"));
   await processor.stop();
 
-  assert.deepEqual(repository.writes.map((value) => value.price), ["100"]);
+  assert.deepEqual(
+    repository.writes.map((value) => value.price),
+    ["100"],
+  );
 });
 
 test("passes accepted events to history and publishes stored points", async () => {
@@ -92,7 +92,10 @@ test("does not publish a point skipped by the history sampler", async () => {
   processor.process(marketPrice("101", "2026-08-19T10:00:00.500Z"));
   await processor.stop();
 
-  assert.deepEqual(publisher.published.map((value) => value.price), ["100"]);
+  assert.deepEqual(
+    publisher.published.map((value) => value.price),
+    ["100"],
+  );
 });
 
 test("history failure is recorded and prevents live publishing", async () => {
@@ -104,7 +107,12 @@ test("history failure is recorded and prevents live publishing", async () => {
 
   assert.equal(processor.historyWriteFailed, true);
   assert.equal(publisher.published.length, 0);
-  assert.ok(logs.some(({ level, event }) => level === "error" && event === "price_history_write_failed"));
+  assert.ok(
+    logs.some(
+      ({ level, event }) =>
+        level === "error" && event === "price_history_write_failed",
+    ),
+  );
 });
 
 test("live-publish failure is handled without marking history failed", async () => {
@@ -127,7 +135,12 @@ test("live-publish failure is handled without marking history failed", async () 
 
   assert.equal(unhandled, undefined);
   assert.equal(processor.historyWriteFailed, false);
-  assert.ok(logs.some(({ level, event }) => level === "warn" && event === "live_price_publish_failed"));
+  assert.ok(
+    logs.some(
+      ({ level, event }) =>
+        level === "warn" && event === "live_price_publish_failed",
+    ),
+  );
 });
 
 test("stop waits for in-flight processing", async () => {

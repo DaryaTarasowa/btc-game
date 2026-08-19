@@ -1,4 +1,7 @@
-import { PublishRequest } from "ob-appsync-events-request";
+import { Sha256 } from "@aws-crypto/sha256-js";
+import { fromNodeProviderChain } from "@aws-sdk/credential-providers";
+import { HttpRequest } from "@smithy/protocol-http";
+import { SignatureV4 } from "@smithy/signature-v4";
 
 export interface LiveMarketPrice {
   price: string;
@@ -6,18 +9,49 @@ export interface LiveMarketPrice {
 }
 
 const CHANNEL = "/prices/BTC-USD";
+const SERVICE = "appsync";
+const REGION = "eu-central-1";
 
-export class LivePricePublisher {
+export interface PricePublisher {
+  publish(marketPrice: LiveMarketPrice): Promise<void>;
+}
+
+export class LivePricePublisher implements PricePublisher {
   public constructor(private readonly endpoint: string) {}
 
   public async publish(marketPrice: LiveMarketPrice): Promise<void> {
-    const request = await PublishRequest.signed(
-      this.endpoint,
-      CHANNEL,
-      marketPrice,
-    );
+    const url = new URL(this.endpoint);
 
-    const response = await fetch(request);
+    const body = JSON.stringify({
+      channel: CHANNEL,
+      events: [JSON.stringify(marketPrice)],
+    });
+
+    const signer = new SignatureV4({
+      credentials: fromNodeProviderChain(),
+      region: REGION,
+      service: SERVICE,
+      sha256: Sha256,
+    });
+
+    const request = new HttpRequest({
+      method: "POST",
+      hostname: url.hostname,
+      path: url.pathname,
+      headers: {
+        host: url.hostname,
+        "content-type": "application/json",
+      },
+      body,
+    });
+
+    const signedRequest = await signer.sign(request);
+
+    const response = await fetch(this.endpoint, {
+      method: signedRequest.method,
+      headers: signedRequest.headers,
+      body: signedRequest.body,
+    });
 
     if (!response.ok) {
       throw new Error(`AppSync publish failed with status ${response.status}.`);

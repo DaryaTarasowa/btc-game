@@ -1,4 +1,4 @@
-import type { LivePricePublisher } from "./livePricePublisher.js";
+import type { PricePublisher } from "./livePricePublisher.js";
 import { MarketPriceGuard } from "./marketPriceGuard.js";
 import {
   PriceHistoryWriter,
@@ -16,7 +16,7 @@ export type Logger = (
 export interface MarketPriceProcessorSettings {
   product: "BTC-USD";
   repository: PriceHistoryRepository;
-  livePricePublisher: LivePricePublisher;
+  livePricePublisher: PricePublisher;
   log: Logger;
 }
 
@@ -29,7 +29,7 @@ export class MarketPriceProcessor {
 
   private constructor(
     private readonly writer: PriceHistoryWriter,
-    private readonly livePricePublisher: LivePricePublisher,
+    private readonly livePricePublisher: PricePublisher,
     private readonly log: Logger,
   ) {}
 
