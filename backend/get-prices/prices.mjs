@@ -1,4 +1,4 @@
-export const PRICE_HISTORY_WINDOW_MS = 10 * 60 * 1000;
+export const PRICE_HISTORY_WINDOW_MS = 3 * 60 * 1000;
 
 function toSourceTimestamp(date) {
   return date.toISOString().replace("Z", "000Z");

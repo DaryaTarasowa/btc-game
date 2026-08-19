@@ -13,6 +13,11 @@ output "price_history_url" {
   value       = "${aws_apigatewayv2_stage.default.invoke_url}prices"
 }
 
+output "create_bet_url" {
+  description = "Frontend endpoint that creates a bet from an exact visible market point."
+  value       = "${aws_apigatewayv2_stage.default.invoke_url}bets"
+}
+
 output "amplify_app_id" {
   value = aws_amplify_app.frontend.id
 }

@@ -1,14 +1,35 @@
+import { useEffect, useState } from "react";
 import { GameControls } from "../components/GameControls/GameControls";
 import { LoginButton } from "../components/LoginButton/LoginButton";
 import { PriceChart } from "../components/PriceChart/PriceChart";
 import { usePlayer } from "../context/usePlayer";
 import { useLivePrices, useRecentPrices } from "../queries/useRecentPrices";
+import { useCreateBet } from "../queries/useCreateBet";
+import { useStoredActiveBet } from "../queries/useStoredActiveBet";
+
+function useBetCountdown(targetTimestamp?: string) {
+  const [, redraw] = useState(0);
+
+  useEffect(() => {
+    if (!targetTimestamp) return;
+    const timer = window.setInterval(() => redraw((value) => value + 1), 250);
+    return () => window.clearInterval(timer);
+  }, [targetTimestamp]);
+
+  return targetTimestamp
+    ? Math.max(0, Math.ceil((Date.parse(targetTimestamp) - Date.now()) / 1_000))
+    : 0;
+}
 
 export function GamePage() {
   const { playerId } = usePlayer();
   const recentPrices = useRecentPrices();
   useLivePrices();
   const prices = recentPrices.data ?? [];
+  const latestVisiblePoint = prices.at(-1);
+  const [activeBet, setActiveBet] = useStoredActiveBet(playerId);
+  const createBet = useCreateBet(setActiveBet);
+  const secondsRemaining = useBetCountdown(activeBet?.resolutionTargetTimestamp);
 
   return (
     <div className="game-page">
@@ -22,7 +43,26 @@ export function GamePage() {
         ) : (
           <LoginButton />
         )}
-        <GameControls />
+        {activeBet && (
+          <div className={`active-bet active-bet--${activeBet.direction}`}>
+            <span>{activeBet.direction.toUpperCase()} BET ACTIVE</span>
+            <strong>{secondsRemaining}s</strong>
+            <small>
+              Started at ${Number(activeBet.startPrice).toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </small>
+          </div>
+        )}
+        <GameControls
+          disabled={!playerId || !latestVisiblePoint || createBet.isPending || Boolean(activeBet)}
+          onChoose={(direction) => {
+            if (!playerId || !latestVisiblePoint) return;
+            createBet.mutate({ playerId, direction, point: latestVisiblePoint });
+          }}
+        />
+        {createBet.isError && <p className="error">{createBet.error.message}</p>}
       </section>
       <div className="market-panel" aria-live="polite">
         {recentPrices.isPending ? (
@@ -40,11 +80,11 @@ export function GamePage() {
           <div className="market-state">
             <strong>No recent BTC prices</strong>
             <span>
-              The market feed has not stored any trades in the last 10 minutes.
+              The market feed has not stored any trades in the last 3 minutes.
             </span>
           </div>
         ) : (
-          <PriceChart prices={prices} />
+          <PriceChart prices={prices} activeBet={activeBet} />
         )}
       </div>
     </div>

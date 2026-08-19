@@ -33,9 +33,9 @@ test("maps DynamoDB fields to the public model in chronological order", () => {
   );
 });
 
-test("creates an explicit ten-minute query window", () => {
+test("creates an explicit three-minute query window", () => {
   assert.deepEqual(createPriceWindow(new Date("2026-08-19T01:00:00.000Z")), {
-    start: "2026-08-19T00:50:00.000000Z",
+    start: "2026-08-19T00:57:00.000000Z",
     end: "2026-08-19T01:00:00.000000Z",
   });
 });
