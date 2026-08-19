@@ -155,6 +155,16 @@ resource "aws_iam_role_policy" "price_consumer_task" {
   })
 }
 
+# Task-definition revisions are release-owned. Forget the legacy Terraform
+# state entry without deregistering the existing ECS revision.
+removed {
+  from = aws_ecs_task_definition.price_consumer
+
+  lifecycle {
+    destroy = false
+  }
+}
+
 resource "aws_ecs_service" "price_consumer" {
   name            = local.price_consumer_name
   cluster         = aws_ecs_cluster.application.id
