@@ -3,6 +3,7 @@
 *.tfstate.*
 *.tfplan
 createPlayer.zip
+getPrices.zip
 .terraform-tmp/
 frontend.zip
 price-consumer-deployment.tfplan

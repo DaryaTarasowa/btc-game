@@ -22,23 +22,99 @@ button {
 
 .shell {
   min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: 24px;
+  padding: clamp(20px, 5vw, 64px);
   background:
     radial-gradient(circle at 20% 10%, rgba(247, 147, 26, 0.2), transparent 34rem),
     linear-gradient(145deg, #090c13, #131929);
 }
 
-.card {
-  width: min(100%, 560px);
-  padding: clamp(32px, 7vw, 64px);
+.app-header {
+  width: min(1180px, 100%);
+  margin: 0 auto 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.app-brand {
+  color: #f7931a;
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  text-decoration: none;
+}
+
+.app-header nav { display: flex; gap: 8px; }
+.app-header nav a,
+.text-link {
+  padding: 9px 14px;
+  border-radius: 999px;
+  color: #9ca8c0;
+  text-decoration: none;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+.app-header nav a[aria-current="page"] { color: #fff; background: rgba(255, 255, 255, 0.09); }
+.text-link { display: inline-block; margin-top: 24px; color: #f7931a; background: rgba(247, 147, 26, 0.1); }
+
+.game-page {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(260px, 0.72fr) minmax(0, 1.8fr);
+  gap: 24px;
+  align-items: stretch;
+}
+
+.player-panel,
+.history-page {
+  padding: clamp(28px, 4vw, 52px);
   border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 24px;
   background: rgba(20, 25, 39, 0.84);
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.4);
   text-align: center;
 }
+
+.player-panel { text-align: center; }
+.history-page { width: min(760px, 100%); margin: 0 auto; }
+.history-page__empty { margin-top: 40px; color: #8490a9; }
+
+.login-control { margin-bottom: 28px; }
+.game-controls { display: flex; gap: 10px; margin-top: 32px; }
+.game-controls__button { min-width: 0; flex: 1; }
+.game-controls__button--up { color: #06251b; background: #35d59a; }
+.game-controls__button--up:hover:not(:disabled) { background: #63e5b5; }
+.game-controls__button--down { color: #2d080b; background: #ff6877; }
+.game-controls__button--down:hover:not(:disabled) { background: #ff8994; }
+
+.market-panel { min-width: 0; }
+.market-state {
+  min-height: 490px;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  padding: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 24px;
+  color: #8490a9;
+  background: rgba(20, 25, 39, 0.84);
+  text-align: center;
+}
+.market-state strong { color: #e8ecf6; }
+.market-state--error strong,
+.market-state--error span { color: #ff9b9b; }
+.market-state__pulse {
+  width: 11px;
+  height: 11px;
+  margin-bottom: 6px;
+  border-radius: 50%;
+  background: #f7931a;
+  box-shadow: 0 0 0 0 rgba(247, 147, 26, 0.5);
+  animation: pulse 1.5s infinite;
+}
+@keyframes pulse { 70% { box-shadow: 0 0 0 12px rgba(247, 147, 26, 0); } }
 
 .eyebrow {
   margin: 0 0 12px;
@@ -98,4 +174,10 @@ button:disabled {
 .error {
   margin: 22px 0 0;
   color: #ff9b9b;
+}
+
+@media (max-width: 820px) {
+  .game-page { grid-template-columns: 1fr; }
+  .player-panel { text-align: left; }
+  .market-state { min-height: 320px; }
 }

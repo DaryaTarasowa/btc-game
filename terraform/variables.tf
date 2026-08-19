@@ -4,14 +4,9 @@ variable "aws_region" {
   default     = "eu-central-1"
 }
 
-variable "price_consumer_image_tag" {
-  description = "Immutable ECR image tag for the price consumer. Null creates the service at desired count zero for initial ECR bootstrap."
+variable "price_consumer_initial_task_definition_arn" {
+  description = "One-time task-definition ARN used only when creating the ECS service in a new environment. Omit after the service exists; release automation owns subsequent revisions."
   type        = string
   default     = null
   nullable    = true
-
-  validation {
-    condition     = var.price_consumer_image_tag == null || can(regex("^[A-Za-z0-9_.-]{1,128}$", var.price_consumer_image_tag))
-    error_message = "price_consumer_image_tag must be null or a valid ECR image tag."
-  }
 }

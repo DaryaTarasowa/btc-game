@@ -4,7 +4,7 @@ resource "aws_apigatewayv2_api" "player" {
 
   cors_configuration {
     allow_headers = ["content-type"]
-    allow_methods = ["POST", "OPTIONS"]
+    allow_methods = ["GET", "POST", "OPTIONS"]
     allow_origins = ["*"]
     max_age       = 3600
   }
@@ -41,4 +41,26 @@ resource "aws_lambda_permission" "api_create_player" {
   function_name = aws_lambda_function.create_player.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.player.execution_arn}/*/POST/players"
+}
+
+resource "aws_apigatewayv2_integration" "get_prices" {
+  api_id                 = aws_apigatewayv2_api.player.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.get_prices.invoke_arn
+  payload_format_version = "2.0"
+  timeout_milliseconds   = 3000
+}
+
+resource "aws_apigatewayv2_route" "get_prices" {
+  api_id    = aws_apigatewayv2_api.player.id
+  route_key = "GET /prices"
+  target    = "integrations/${aws_apigatewayv2_integration.get_prices.id}"
+}
+
+resource "aws_lambda_permission" "api_get_prices" {
+  statement_id  = "AllowPlayerApiInvokeGetPrices"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.get_prices.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.player.execution_arn}/*/GET/prices"
 }
