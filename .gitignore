@@ -60,6 +60,7 @@ terraform.rc
 
 # Generated Lambda archives and temporary import artifacts
 /terraform/createPlayer.zip
+/terraform/getPrices.zip
 /terraform/import-artifacts/
 
 # OS and editor files

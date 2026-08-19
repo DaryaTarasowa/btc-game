@@ -49,3 +49,36 @@ resource "aws_iam_role_policy" "create_player_runtime" {
     ]
   })
 }
+
+resource "aws_iam_role" "get_prices" {
+  name                 = "btc-game-price-history-reader"
+  description          = "Runtime role for the BTC game price-history reader Lambda."
+  assume_role_policy   = local.lambda_trust_policy
+  max_session_duration = 3600
+  permissions_boundary = local.runtime_permissions_boundary_arn
+}
+
+resource "aws_iam_role_policy" "get_prices_runtime" {
+  name = "btc-game-price-history-reader-runtime"
+  role = aws_iam_role.get_prices.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "arn:aws:logs:${var.aws_region}:*:log-group:/aws/lambda/btc-game-price-history-reader:*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = "dynamodb:Query"
+        Resource = aws_dynamodb_table.price_history.arn
+      }
+    ]
+  })
+}

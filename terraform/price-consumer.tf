@@ -13,9 +13,7 @@ data "aws_subnets" "default" {
 }
 
 locals {
-  price_consumer_name          = "btc-game-price-consumer"
-  price_consumer_container_tag = coalesce(var.price_consumer_image_tag, "bootstrap")
-  price_consumer_desired_count = var.price_consumer_image_tag == null ? 0 : 1
+  price_consumer_name = "btc-game-price-consumer"
 
   ecs_task_trust_policy = jsonencode({
     Version = "2012-10-17"
@@ -150,45 +148,11 @@ resource "aws_iam_role_policy" "price_consumer_task" {
   })
 }
 
-resource "aws_ecs_task_definition" "price_consumer" {
-  family                   = local.price_consumer_name
-  requires_compatibilities = ["FARGATE"]
-  network_mode             = "awsvpc"
-  cpu                      = 256
-  memory                   = 512
-  execution_role_arn       = aws_iam_role.price_consumer_execution.arn
-  task_role_arn            = aws_iam_role.price_consumer_task.arn
-
-  runtime_platform {
-    operating_system_family = "LINUX"
-    cpu_architecture        = "X86_64"
-  }
-
-  container_definitions = jsonencode([{
-    name        = "price-consumer"
-    image       = "${aws_ecr_repository.price_consumer.repository_url}:${local.price_consumer_container_tag}"
-    essential   = true
-    stopTimeout = 30
-    environment = [{
-      name  = "PRICE_HISTORY_TABLE"
-      value = aws_dynamodb_table.price_history.name
-    }]
-    logConfiguration = {
-      logDriver = "awslogs"
-      options = {
-        awslogs-group         = aws_cloudwatch_log_group.price_consumer.name
-        awslogs-region        = var.aws_region
-        awslogs-stream-prefix = "price-consumer"
-      }
-    }
-  }])
-}
-
 resource "aws_ecs_service" "price_consumer" {
   name            = local.price_consumer_name
   cluster         = aws_ecs_cluster.application.id
-  task_definition = aws_ecs_task_definition.price_consumer.arn
-  desired_count   = local.price_consumer_desired_count
+  task_definition = var.price_consumer_initial_task_definition_arn
+  desired_count   = 1
   launch_type     = "FARGATE"
 
   deployment_circuit_breaker {
@@ -200,5 +164,14 @@ resource "aws_ecs_service" "price_consumer" {
     subnets          = data.aws_subnets.default.ids
     security_groups  = [aws_security_group.price_consumer.id]
     assign_public_ip = true
+  }
+
+  # Application releases select an immutable task-definition revision and set
+  # the operational count. Infrastructure applies must not roll either back.
+  lifecycle {
+    ignore_changes = [
+      desired_count,
+      task_definition,
+    ]
   }
 }

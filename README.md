@@ -178,19 +178,23 @@ node scripts/deploy-frontend.mjs --skip-install
 
 ### Price consumer
 
-The first infrastructure deployment creates ECR and the ECS service with desired count zero because no application image exists yet. After that infrastructure plan has been reviewed and applied, commit the application changes and create an immutable Git-SHA deployment plan from the repository root:
+Terraform owns the ECS cluster, service shell, networking, IAM, logs, and ECR repository. Application releases own task definitions, the immutable revision selected by the service, and its operational desired count. Terraform intentionally ignores the latter two service attributes, so an infrastructure apply cannot roll back a release or stop the consumer.
+
+For a brand-new environment, first apply the foundational resources through ECR, IAM, logging, and networking. Run the release preparation command below, followed by `node scripts/deploy-price-consumer.mjs --register-only --base-task-definition=<seed-family:revision>`. The base definition supplies the infrastructure-owned task settings; the script replaces only its container image. Register-only mode prints the Terraform command that creates the service with the one-time `price_consumer_initial_task_definition_arn` value. After the service exists, omit the variable permanently. It is ignored for an existing service, and normal infrastructure plans do not receive or reconcile application image tags or task-definition revisions.
+
+After the initial infrastructure exists, commit application changes and prepare an immutable Git-SHA release from the repository root:
 
 ```powershell
 node scripts/deploy-price-consumer.mjs
 ```
 
-This builds the container locally and saves a Terraform plan that changes the task definition to the current commit SHA and scales the service to one task. It does not push or apply anything. Review the plan, then explicitly deploy it:
+This builds the container locally without changing infrastructure. Review the release, then explicitly deploy it:
 
 ```powershell
 node scripts/deploy-price-consumer.mjs --apply
 ```
 
-The apply mode authenticates Docker using the current AWS CLI identity, pushes the planned immutable image to ECR, and applies the saved Terraform plan. No credentials are stored in the image or script.
+The apply mode authenticates Docker using the current AWS CLI identity, pushes the immutable image, reads the service's current task definition, replaces only the consumer image, and registers the resulting revision. It updates the ECS service to that revision with desired count one and reports success only after ECS reaches a stable state. It does not run Terraform. No credentials are stored in the image or script.
 
 ## Updating the application
 

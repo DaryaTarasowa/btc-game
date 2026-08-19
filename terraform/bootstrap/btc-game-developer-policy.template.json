@@ -3,6 +3,11 @@
   "Statement": [
     {
       "Effect": "Allow",
+      "Action": "ecs:DescribeTaskDefinition",
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
       "Action": "sts:GetCallerIdentity",
       "Resource": "*"
     },
@@ -154,7 +159,6 @@
         "ecs:DeregisterTaskDefinition",
         "ecs:DescribeClusters",
         "ecs:DescribeServices",
-        "ecs:DescribeTaskDefinition",
         "ecs:ListTagsForResource",
         "ecs:RegisterTaskDefinition",
         "ecs:TagResource",

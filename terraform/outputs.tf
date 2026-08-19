@@ -8,6 +8,11 @@ output "create_player_url" {
   value       = "${aws_apigatewayv2_stage.default.invoke_url}players"
 }
 
+output "price_history_url" {
+  description = "Frontend endpoint that returns recent BTC-USD price history."
+  value       = "${aws_apigatewayv2_stage.default.invoke_url}prices"
+}
+
 output "amplify_app_id" {
   value = aws_amplify_app.frontend.id
 }
