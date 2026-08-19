@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { PricePublisher } from "./livePricePublisher.js";
+import type { PricePublisher } from "./types.js";
 import { MarketPriceProcessor, type Logger } from "./marketPriceProcessor.js";
 import type { PriceHistoryRepository } from "./priceHistoryWriter.js";
 import type { MarketPriceEventData } from "./types.js";

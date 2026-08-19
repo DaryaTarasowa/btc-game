@@ -2,21 +2,13 @@ import { Sha256 } from "@aws-crypto/sha256-js";
 import { fromNodeProviderChain } from "@aws-sdk/credential-providers";
 import { HttpRequest } from "@smithy/protocol-http";
 import { SignatureV4 } from "@smithy/signature-v4";
-
-export interface LiveMarketPrice {
-  price: string;
-  eventTimestamp: string;
-}
+import type { LiveMarketPrice, PricePublisher } from "./types.js";
 
 const CHANNEL = "/prices/BTC-USD";
 const SERVICE = "appsync";
 const REGION = "eu-central-1";
 
-export interface PricePublisher {
-  publish(marketPrice: LiveMarketPrice): Promise<void>;
-}
-
-export class LivePricePublisher implements PricePublisher {
+export class AppsyncEventsPublisher implements PricePublisher {
   public constructor(private readonly endpoint: string) {}
 
   public async publish(marketPrice: LiveMarketPrice): Promise<void> {

@@ -1,5 +1,5 @@
 import { CoinbasePriceConsumer } from "./coinbasePriceConsumer.js";
-import { LivePricePublisher } from "./livePricePublisher.js";
+import { AppsyncEventsPublisher } from "./appsyncEventsPublisher.js";
 import { MarketPriceProcessor } from "./marketPriceProcessor.js";
 import { PriceHistoryRepository } from "./priceHistoryRepository.js";
 import { log } from "./utils.js";
@@ -8,20 +8,20 @@ const PRODUCT = "BTC-USD";
 
 interface StartConfig {
   priceHistoryTable: string;
-  livePriceEventEndpoint: string;
+  appsyncEventsEndpoint: string;
 }
 
 function getConfig(): StartConfig {
   const priceHistoryTable = process.env.PRICE_HISTORY_TABLE;
-  const livePriceEventEndpoint = process.env.LIVE_PRICE_EVENT_ENDPOINT;
+  const appsyncEventsEndpoint = process.env.APPSYNC_EVENTS_ENDPOINT;
 
-  if (!priceHistoryTable || !livePriceEventEndpoint) {
+  if (!priceHistoryTable || !appsyncEventsEndpoint) {
     throw new Error("Missing required environment configuration.");
   }
 
   return {
     priceHistoryTable,
-    livePriceEventEndpoint,
+    appsyncEventsEndpoint,
   };
 }
 
@@ -40,8 +40,8 @@ try {
 async function start(config: StartConfig): Promise<void> {
   try {
     const repository = new PriceHistoryRepository(config.priceHistoryTable);
-    const livePricePublisher = new LivePricePublisher(
-      config.livePriceEventEndpoint,
+    const livePricePublisher = new AppsyncEventsPublisher(
+      config.appsyncEventsEndpoint,
     );
     const processor = await MarketPriceProcessor.create({
       repository,
