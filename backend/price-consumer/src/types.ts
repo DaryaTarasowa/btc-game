@@ -1,9 +1,7 @@
-export interface NormalizedPriceUpdate {
-  type: "price_update";
-  source: "coinbase";
+export interface MarketPriceEventData {
   product: "BTC-USD";
   price: string;
-  sourceTimestamp: string;
+  eventTimestamp: string;
   receivedTimestamp: string;
   sequence?: number;
   tradeId?: number;

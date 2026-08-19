@@ -1,35 +1,34 @@
 import WebSocket, { type RawData } from "ws";
 
-import {
-  messageType,
-  LatestPriceSampler,
-  normalizeCoinbaseMessage,
-} from "./normalize.js";
-import type { LogLevel } from "./types.js";
+import { getMessageType, normalizeCoinbaseMessage } from "./coinbaseMapper.js";
+import type { LogLevel, MarketPriceEventData } from "./types.js";
 
 const COINBASE_URL = "wss://ws-feed.exchange.coinbase.com";
 const PRODUCT = "BTC-USD";
 const INITIAL_RECONNECT_DELAY_MS = 1_000;
 const MAX_RECONNECT_DELAY_MS = 30_000;
 const STALE_CONNECTION_MS = 15_000;
-const PRICE_SAMPLE_INTERVAL_MS = 1_000;
 
-type Logger = (level: LogLevel, event: string, details?: Record<string, unknown>) => void;
+type Logger = (
+  level: LogLevel,
+  event: string,
+  details?: Record<string, unknown>,
+) => void;
 
 export class CoinbasePriceConsumer {
-  private readonly priceSampler = new LatestPriceSampler();
   private socket: WebSocket | undefined;
-  private sampleTimer: NodeJS.Timeout | undefined;
   private reconnectTimer: NodeJS.Timeout | undefined;
   private watchdogTimer: NodeJS.Timeout | undefined;
   private reconnectAttempt = 0;
   private stopping = false;
 
-  public constructor(private readonly log: Logger) {}
+  public constructor(
+    private readonly log: Logger,
+    private readonly onPriceUpdate: (eventData: MarketPriceEventData) => void,
+  ) {}
 
   public start(): void {
     if (!this.socket && !this.reconnectTimer && !this.stopping) {
-      this.startSampler();
       this.connect();
     }
   }
@@ -46,7 +45,10 @@ export class CoinbasePriceConsumer {
   }
 
   private connect(): void {
-    this.log("info", "coinbase_connecting", { url: COINBASE_URL, product: PRODUCT });
+    this.log("info", "coinbase_connecting", {
+      url: COINBASE_URL,
+      product: PRODUCT,
+    });
     const socket = new WebSocket(COINBASE_URL);
     this.socket = socket;
 
@@ -101,19 +103,14 @@ export class CoinbasePriceConsumer {
       value = JSON.parse(data.toString());
     } catch (error: unknown) {
       this.log("warn", "coinbase_malformed_json", {
-        message: error instanceof Error ? error.message : "Unknown JSON parse error",
+        message:
+          error instanceof Error ? error.message : "Unknown JSON parse error",
       });
       return;
     }
 
-    const receivedTimestamp = new Date().toISOString();
-    const update = normalizeCoinbaseMessage(value, receivedTimestamp);
-    if (update) {
-      this.priceSampler.add(update);
-      return;
-    }
+    const type = getMessageType(value);
 
-    const type = messageType(value);
     if (type === "subscriptions" || type === "heartbeat") {
       return;
     }
@@ -123,14 +120,28 @@ export class CoinbasePriceConsumer {
       return;
     }
 
-    this.log("warn", "coinbase_unexpected_message", { type: type ?? "unknown" });
+    const marketPriceEventData = normalizeCoinbaseMessage(
+      value,
+      new Date().toISOString(),
+    );
+
+    if (!marketPriceEventData) {
+      this.log("warn", "coinbase_message_normalization_failed", {
+        type: type ?? "unknown",
+      });
+      return;
+    }
+
+    this.onPriceUpdate(marketPriceEventData);
   }
 
   private resetWatchdog(socket: WebSocket): void {
     this.clearWatchdog();
     this.watchdogTimer = setTimeout(() => {
       if (this.socket === socket) {
-        this.log("warn", "coinbase_connection_stale", { timeoutMs: STALE_CONNECTION_MS });
+        this.log("warn", "coinbase_connection_stale", {
+          timeoutMs: STALE_CONNECTION_MS,
+        });
         socket.terminate();
       }
     }, STALE_CONNECTION_MS);
@@ -165,26 +176,9 @@ export class CoinbasePriceConsumer {
 
   private clearTimers(): void {
     this.clearWatchdog();
-    if (this.sampleTimer) {
-      clearInterval(this.sampleTimer);
-      this.sampleTimer = undefined;
-    }
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = undefined;
     }
-  }
-
-  private startSampler(): void {
-    if (this.sampleTimer) {
-      return;
-    }
-
-    this.sampleTimer = setInterval(() => {
-      const update = this.priceSampler.takeChanged();
-      if (update) {
-        console.log(JSON.stringify(update));
-      }
-    }, PRICE_SAMPLE_INTERVAL_MS);
   }
 }
