@@ -22,6 +22,12 @@
       ]
     },
     {
+      "Sid": "PublishApplicationEvents",
+      "Effect": "Allow",
+      "Action": "appsync:EventPublish",
+      "Resource": "arn:${AWS_PARTITION}:appsync:${AWS_REGION}:${AWS_ACCOUNT_ID}:apis/*/channelNamespace/prices"
+    },
+    {
       "Sid": "ApplicationLambdaLogGroups",
       "Effect": "Allow",
       "Action": "logs:CreateLogGroup",

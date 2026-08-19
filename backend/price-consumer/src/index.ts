@@ -1,7 +1,7 @@
 import { CoinbasePriceConsumer } from "./coinbasePriceConsumer.js";
 import { AppSyncLivePricePublisher } from "./livePricePublisher.js";
 import { MarketPriceProcessor } from "./marketPriceProcessor.js";
-import { PriceHistoryRepository } from "./PriceHistoryRepository.js";
+import { PriceHistoryRepository } from "./priceHistoryRepository.js";
 import { log } from "./utils.js";
 
 const PRODUCT = "BTC-USD";

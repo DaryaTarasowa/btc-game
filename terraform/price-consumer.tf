@@ -137,14 +137,21 @@ resource "aws_iam_role_policy" "price_consumer_task" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Action = [
-        "dynamodb:PutItem",
-        "dynamodb:Query"
-      ]
-      Resource = aws_dynamodb_table.price_history.arn
-    }]
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:PutItem",
+          "dynamodb:Query"
+        ]
+        Resource = aws_dynamodb_table.price_history.arn
+      },
+      {
+        Effect   = "Allow"
+        Action   = "appsync:EventPublish"
+        Resource = aws_appsync_channel_namespace.prices.channel_namespace_arn
+      }
+    ]
   })
 }
 
