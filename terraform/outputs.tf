@@ -44,3 +44,34 @@ output "price_consumer_log_group_name" {
   description = "CloudWatch log group for the price consumer."
   value       = aws_cloudwatch_log_group.price_consumer.name
 }
+
+output "live_price_event_api_id" {
+  description = "AppSync Event API ID for live BTC prices."
+  value       = aws_appsync_api.live_prices.api_id
+}
+
+output "live_price_event_http_endpoint" {
+  description = "AppSync Events HTTP endpoint used by the price publisher."
+  value       = "https://${aws_appsync_api.live_prices.dns["HTTP"]}/event"
+}
+
+output "live_price_event_realtime_endpoint" {
+  description = "AppSync Events realtime endpoint used by browser subscribers."
+  value       = "wss://${aws_appsync_api.live_prices.dns["REALTIME"]}/event/realtime"
+}
+
+output "live_price_event_api_key" {
+  description = "API key for frontend live-price subscriptions."
+  value       = aws_appsync_api_key.live_price_frontend.key
+  sensitive   = true
+}
+
+output "live_price_event_namespace" {
+  description = "AppSync Events namespace containing live-price channels."
+  value       = aws_appsync_channel_namespace.prices.name
+}
+
+output "live_price_event_channel" {
+  description = "AppSync Events channel for BTC-USD live prices."
+  value       = "/prices/BTC-USD"
+}

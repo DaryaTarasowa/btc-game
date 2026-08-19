@@ -3,6 +3,29 @@
   "Statement": [
     {
       "Effect": "Allow",
+      "Action": [
+        "appsync:CreateApi",
+        "appsync:CreateApiKey",
+        "appsync:CreateChannelNamespace",
+        "appsync:DeleteApi",
+        "appsync:DeleteApiKey",
+        "appsync:DeleteChannelNamespace",
+        "appsync:GetApi",
+        "appsync:GetChannelNamespace",
+        "appsync:ListApiKeys",
+        "appsync:ListApis",
+        "appsync:ListChannelNamespaces",
+        "appsync:ListTagsForResource",
+        "appsync:TagResource",
+        "appsync:UntagResource",
+        "appsync:UpdateApi",
+        "appsync:UpdateApiKey",
+        "appsync:UpdateChannelNamespace"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
       "Action": "ecs:DescribeTaskDefinition",
       "Resource": "*"
     },
