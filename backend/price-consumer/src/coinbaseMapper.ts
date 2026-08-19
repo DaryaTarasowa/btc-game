@@ -1,4 +1,4 @@
-import type { NormalizedPriceUpdate } from "./types.js";
+import type { MarketPriceEventData } from "./types.js";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -19,14 +19,14 @@ function isTimestamp(value: string): boolean {
   return Number.isFinite(Date.parse(value));
 }
 
-export function messageType(value: unknown): string | null {
+export function getMessageType(value: unknown): string | null {
   return isRecord(value) && typeof value.type === "string" ? value.type : null;
 }
 
 export function normalizeCoinbaseMessage(
   value: unknown,
   receivedTimestamp: string,
-): NormalizedPriceUpdate | null {
+): MarketPriceEventData | null {
   if (!isRecord(value) || value.type !== "ticker") {
     return null;
   }
@@ -42,38 +42,17 @@ export function normalizeCoinbaseMessage(
   }
 
   return {
-    type: "price_update",
-    source: "coinbase",
     product: "BTC-USD",
     price: value.price,
-    sourceTimestamp: value.time,
+    eventTimestamp: value.time,
     receivedTimestamp,
-    ...(typeof value.sequence === "number" && Number.isSafeInteger(value.sequence)
+    ...(typeof value.sequence === "number" &&
+    Number.isSafeInteger(value.sequence)
       ? { sequence: value.sequence }
       : {}),
-    ...(typeof value.trade_id === "number" && Number.isSafeInteger(value.trade_id)
+    ...(typeof value.trade_id === "number" &&
+    Number.isSafeInteger(value.trade_id)
       ? { tradeId: value.trade_id }
       : {}),
   };
-}
-
-export class LatestPriceSampler {
-  private pendingUpdate: NormalizedPriceUpdate | undefined;
-  private lastPrice: string | undefined;
-
-  public add(update: NormalizedPriceUpdate): void {
-    this.pendingUpdate = update;
-  }
-
-  public takeChanged(): NormalizedPriceUpdate | null {
-    const update = this.pendingUpdate;
-    this.pendingUpdate = undefined;
-
-    if (!update || update.price === this.lastPrice) {
-      return null;
-    }
-
-    this.lastPrice = update.price;
-    return update;
-  }
 }
