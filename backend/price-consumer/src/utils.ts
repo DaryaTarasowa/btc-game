@@ -8,6 +8,29 @@ export function toEpochMilliseconds(timestamp: string): number {
   return milliseconds;
 }
 
+export function toEpochNanoseconds(timestamp: string): bigint {
+  const match = timestamp.match(
+    /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{1,9}))?Z$/,
+  );
+
+  if (!match) {
+    throw new Error(`Invalid UTC timestamp: ${timestamp}`);
+  }
+
+  const [, secondsPart, fractionalPart = ""] = match;
+
+  const epochMilliseconds = Date.parse(`${secondsPart}Z`);
+  if (Number.isNaN(epochMilliseconds)) {
+    throw new Error(`Invalid UTC timestamp: ${timestamp}`);
+  }
+
+  const epochSeconds = BigInt(epochMilliseconds / 1000);
+
+  const nanoseconds = BigInt(fractionalPart.padEnd(9, "0"));
+
+  return epochSeconds * 1_000_000_000n + nanoseconds;
+}
+
 export type LogLevel = "info" | "warn" | "error";
 
 export function log(
