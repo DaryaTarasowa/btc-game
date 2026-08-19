@@ -3,10 +3,10 @@ import test from "node:test";
 import type { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import { QueryCommand } from "@aws-sdk/lib-dynamodb";
 import {
-  DynamoDbPriceHistoryRepository,
+  PriceHistoryRepository,
   PRICE_HISTORY_RETENTION_SECONDS,
   toPriceHistoryItem,
-} from "./priceHistory.js";
+} from "./PriceHistoryRepository.js";
 import type { MarketPriceEventData } from "./types.js";
 
 test("maps a sampled point to the DynamoDB shape with a ten-minute TTL", () => {
@@ -44,7 +44,7 @@ test("queries the newest product item once using descending sort-key order", asy
       return { Items: [{ sourceTimestamp: "2026-08-18T18:30:12.100Z" }] };
     },
   } as unknown as DynamoDBDocumentClient;
-  const repository = new DynamoDbPriceHistoryRepository(
+  const repository = new PriceHistoryRepository(
     "btc-game-price-history",
     client,
   );

@@ -1,7 +1,8 @@
 import WebSocket, { type RawData } from "ws";
 
 import { getMessageType, normalizeCoinbaseMessage } from "./coinbaseMapper.js";
-import type { LogLevel, MarketPriceEventData } from "./types.js";
+import type { MarketPriceEventData } from "./types.js";
+import type { LogLevel } from "./utils.js";
 
 const COINBASE_URL = "wss://ws-feed.exchange.coinbase.com";
 const PRODUCT = "BTC-USD";

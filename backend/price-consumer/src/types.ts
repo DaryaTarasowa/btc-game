@@ -6,5 +6,3 @@ export interface MarketPriceEventData {
   sequence?: number;
   tradeId?: number;
 }
-
-export type LogLevel = "info" | "warn" | "error";
