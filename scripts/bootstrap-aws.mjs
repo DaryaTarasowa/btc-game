@@ -8,6 +8,7 @@ const DEFAULT_IAM_USER = "btc-game-developer";
 const DEFAULT_REGION = "eu-central-1";
 const BOUNDARY_POLICY_NAME = "btc-game-runtime-boundary";
 const DEPLOYER_POLICY_NAME = "btc-game-developer";
+const MAX_MANAGED_POLICY_CHARACTERS = 6_144;
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(scriptDirectory, "..");
@@ -112,13 +113,21 @@ async function renderPolicy(templatePath, outputPath, replacements) {
     throw new Error(`Unresolved template values in ${templatePath}: ${unresolved.join(", ")}`);
   }
 
+  let policy;
   try {
-    JSON.parse(rendered);
+    policy = JSON.parse(rendered);
   } catch (error) {
     throw new Error(`Rendered policy is invalid JSON (${templatePath}): ${error.message}`);
   }
 
-  await writeFile(outputPath, rendered, { encoding: "utf8", mode: 0o600 });
+  const compactPolicy = JSON.stringify(policy);
+  if (compactPolicy.length > MAX_MANAGED_POLICY_CHARACTERS) {
+    throw new Error(
+      `Rendered policy exceeds the IAM managed-policy limit (${compactPolicy.length}/${MAX_MANAGED_POLICY_CHARACTERS} characters): ${templatePath}`,
+    );
+  }
+
+  await writeFile(outputPath, compactPolicy, { encoding: "utf8", mode: 0o600 });
   return outputPath;
 }
 

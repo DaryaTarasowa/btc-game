@@ -1,3 +1,11 @@
 dist
 node_modules
 *.log
+.env
+.env.*
+coverage
+.git
+.gitignore
+**/*.test.ts
+*.credentials
+credentials

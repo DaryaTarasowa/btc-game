@@ -8,6 +8,7 @@ A small serverless BTC prediction game deployed on AWS.
 - HTTP API provided by API Gateway
 - Serverless backend using AWS Lambda
 - DynamoDB for application data
+- Long-running BTC price consumer on ECS/Fargate
 - Infrastructure managed with Terraform
 
 The application is deployed to `eu-central-1`.
@@ -104,6 +105,8 @@ The script handles IAM's managed-policy version limit by deleting only the oldes
 
 After this bootstrap, normal Terraform additions using the supported `btc-game-*` DynamoDB, Lambda, IAM runtime-role, ECS/Fargate, ECR, logging, API Gateway, and Amplify scopes do not require administrator intervention. Adding a new AWS service or expanding the maximum permissions available to runtime workloads still requires an administrator to review and update the external boundary or deployment policy.
 
+Existing deployments must rerun the bootstrap script once after adding the price-consumer infrastructure so Terraform can manage its dedicated outbound-only security group. This updates only the external deployment policy; the runtime boundary does not change.
+
 </details>
 
 ## Log in to AWS
@@ -173,6 +176,22 @@ If dependencies are already installed:
 node scripts/deploy-frontend.mjs --skip-install
 ```
 
+### Price consumer
+
+The first infrastructure deployment creates ECR and the ECS service with desired count zero because no application image exists yet. After that infrastructure plan has been reviewed and applied, commit the application changes and create an immutable Git-SHA deployment plan from the repository root:
+
+```powershell
+node scripts/deploy-price-consumer.mjs
+```
+
+This builds the container locally and saves a Terraform plan that changes the task definition to the current commit SHA and scales the service to one task. It does not push or apply anything. Review the plan, then explicitly deploy it:
+
+```powershell
+node scripts/deploy-price-consumer.mjs --apply
+```
+
+The apply mode authenticates Docker using the current AWS CLI identity, pushes the planned immutable image to ECR, and applies the saved Terraform plan. No credentials are stored in the image or script.
+
 ## Updating the application
 
 For infrastructure or backend changes, review and apply a new Terraform plan:
@@ -188,6 +207,8 @@ For frontend-only changes:
 ```powershell
 node scripts/deploy-frontend.mjs --skip-install
 ```
+
+For price-consumer changes, commit the changes and repeat the two-step price-consumer deployment above.
 
 ### Verify the deployment
 
@@ -207,6 +228,16 @@ You logged in with the id <UUID>
 ```
 
 The UUID is stored in the browser's local storage, so refreshing the page should keep the player logged in.
+
+Verify the price consumer after deployment:
+
+```powershell
+aws ecs describe-services --cluster btc-game-application --services btc-game-price-consumer
+aws logs tail /aws/ecs/btc-game-price-consumer --follow
+aws dynamodb query --table-name btc-game-price-history --key-condition-expression "product = :product" --expression-attribute-values '{":product":{"S":"BTC-USD"}}' --no-scan-index-forward --limit 1
+```
+
+The ECS service should report one running task, logs should contain `coinbase_connected`, and the DynamoDB query should return a recent real Coinbase point.
 
 ## Safety
 

@@ -1,7 +1,7 @@
 import { CoinbasePriceConsumer } from "./coinbaseClient.js";
 import { DynamoDbPriceHistoryRepository } from "./priceHistory.js";
 import { PriceHistoryWriter } from "./priceHistoryWriter.js";
-import { MarketPriceGuard } from "./marketPriceGuard.test.js";
+import { MarketPriceGuard } from "./marketPriceGuard.js";
 import type { LogLevel, MarketPriceEventData } from "./types.js";
 
 function log(
@@ -58,7 +58,7 @@ if (!tableName) {
   }
 
   function handlePriceUpdate(message: MarketPriceEventData): void {
-    if (!dataFilter.shouldSkip(message)) {
+    if (dataFilter.shouldSkip(message)) {
       droppedMarketEvents += 1;
       if (droppedMarketEvents === 1 || droppedMarketEvents % 100 === 0) {
         log("warn", "market_event_dropped", {
