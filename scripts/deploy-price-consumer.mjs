@@ -1,51 +1,49 @@
+/**
+ * Prepares and deploys normal price-consumer releases.
+ *
+ * Terraform owns the long-lived ECS/ECR infrastructure. This script assumes
+ * the ECS service already exists with a current task definition. It builds and
+ * pushes an immutable Git-SHA image, clones the current task definition with
+ * only the consumer image changed, registers the next revision, and rolls the
+ * service to that revision. First-environment setup is documented in README.md.
+ *
+ * Prepare: node scripts/deploy-price-consumer.mjs
+ * Deploy:  node scripts/deploy-price-consumer.mjs --apply
+ */
+
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
-const scriptDirectory = dirname(fileURLToPath(import.meta.url));
-const repositoryRoot = resolve(scriptDirectory, "..");
+const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const terraformDirectory = join(repositoryRoot, "terraform");
 const consumerDirectory = join(repositoryRoot, "backend", "price-consumer");
 const releasePath = join(repositoryRoot, "work", "price-consumer-release.json");
-const options = parseArguments(process.argv.slice(2));
 
-if (options.mode === "apply") {
-  applyRelease({ updateService: true });
-} else if (options.mode === "register-only") {
-  applyRelease({
-    updateService: false,
-    baseTaskDefinition: options.baseTaskDefinition,
-  });
+if (shouldApply(process.argv.slice(2))) {
+  applyRelease();
 } else {
   prepareRelease();
 }
 
 function prepareRelease() {
-  const dirtyFiles = run("git", ["status", "--porcelain"], {
-    captureOutput: true,
-  }).trim();
-
-  if (dirtyFiles) {
+  if (run("git", ["status", "--porcelain"], { capture: true }).trim()) {
     throw new Error(
       "Commit or stash repository changes before building an immutable deployment image.",
     );
   }
 
   const imageTag = run("git", ["rev-parse", "HEAD"], {
-    captureOutput: true,
+    capture: true,
   }).trim();
-
   if (!/^[0-9a-f]{40}$/.test(imageTag)) {
-    throw new Error(
-      "Could not determine a full Git commit SHA for the image tag.",
-    );
+    throw new Error("Could not determine a full Git commit SHA for the image tag.");
   }
 
   const repositoryUrl = terraformOutput("price_consumer_ecr_repository_url");
   const localImage = `btc-game-price-consumer:${imageTag}`;
-
-  console.log(`Building ${localImage} from ${consumerDirectory}`);
+  console.log(`Building ${localImage}...`);
   run("docker", ["build", "--tag", localImage, consumerDirectory]);
 
   writeFileSync(
@@ -53,27 +51,23 @@ function prepareRelease() {
     `${JSON.stringify({ imageTag, repositoryUrl }, null, 2)}\n`,
     "utf8",
   );
-
   console.log(`Saved release metadata to ${releasePath}`);
-  console.log(
-    "Review it, then run: node scripts/deploy-price-consumer.mjs --apply",
-  );
+  console.log("Review it, then run: node scripts/deploy-price-consumer.mjs --apply");
 }
 
-function applyRelease({ updateService, baseTaskDefinition }) {
+function applyRelease() {
   if (!existsSync(releasePath)) {
     throw new Error(
-      `Release metadata not found: ${releasePath}. Run the script without --apply first.`,
+      `Release metadata not found: ${releasePath}. Prepare the release first.`,
     );
   }
 
   const release = JSON.parse(readFileSync(releasePath, "utf8"));
-
   if (
     typeof release.imageTag !== "string" ||
     !/^[0-9a-f]{40}$/.test(release.imageTag) ||
     typeof release.repositoryUrl !== "string" ||
-    release.repositoryUrl.length === 0
+    !release.repositoryUrl
   ) {
     throw new Error(`Release metadata is invalid: ${releasePath}`);
   }
@@ -81,59 +75,56 @@ function applyRelease({ updateService, baseTaskDefinition }) {
   const localImage = `btc-game-price-consumer:${release.imageTag}`;
   const remoteImage = `${release.repositoryUrl}:${release.imageTag}`;
   const registry = release.repositoryUrl.split("/")[0];
+  const cluster = terraformOutput("price_consumer_ecs_cluster_name");
+  const service = terraformOutput("price_consumer_ecs_service_name");
 
-  if (!registry) {
-    throw new Error(`Invalid ECR repository URL: ${release.repositoryUrl}`);
-  }
-
-  const password = run("aws", ["ecr", "get-login-password"], {
-    captureOutput: true,
-  });
-
+  const password = run("aws", ["ecr", "get-login-password"], { capture: true });
   run("docker", ["login", "--username", "AWS", "--password-stdin", registry], {
     input: password,
   });
-
   run("docker", ["tag", localImage, remoteImage]);
   run("docker", ["push", remoteImage]);
 
-  const clusterName = terraformOutput("price_consumer_ecs_cluster_name");
-  const serviceName = terraformOutput("price_consumer_ecs_service_name");
-
-  const sourceTaskDefinition = updateService
-    ? currentServiceTaskDefinition(clusterName, serviceName)
-    : baseTaskDefinition;
-
-  if (!sourceTaskDefinition) {
-    throw new Error(
-      "--register-only requires --base-task-definition=<task-definition ARN or family:revision>.",
-    );
+  const currentTaskDefinition = run(
+    "aws",
+    [
+      "ecs",
+      "describe-services",
+      "--cluster",
+      cluster,
+      "--services",
+      service,
+      "--query",
+      "services[0].taskDefinition",
+      "--output",
+      "text",
+      "--no-cli-pager",
+    ],
+    { capture: true },
+  ).trim();
+  if (!currentTaskDefinition || currentTaskDefinition === "None") {
+    throw new Error(`ECS service ${service} has no current task definition.`);
   }
 
-  const describedTaskDefinition = JSON.parse(
+  const described = JSON.parse(
     run(
       "aws",
       [
         "ecs",
         "describe-task-definition",
         "--task-definition",
-        sourceTaskDefinition,
+        currentTaskDefinition,
         "--query",
         "taskDefinition",
         "--output",
         "json",
         "--no-cli-pager",
       ],
-      { captureOutput: true },
+      { capture: true },
     ),
   );
-
-  const registration = registrationFromDescription(
-    describedTaskDefinition,
-    remoteImage,
-  );
-
-  const taskDefinitionArn = run(
+  const registration = registrationWithImage(described, remoteImage);
+  const taskDefinition = run(
     "aws",
     [
       "ecs",
@@ -146,30 +137,21 @@ function applyRelease({ updateService, baseTaskDefinition }) {
       "text",
       "--no-cli-pager",
     ],
-    { captureOutput: true },
+    { capture: true },
   ).trim();
 
-  if (!updateService) {
-    console.log(`Registered initial task definition ${taskDefinitionArn}.`);
-    console.log(
-      `Create the service with: terraform -chdir=terraform apply -var=price_consumer_initial_task_definition_arn=${taskDefinitionArn}`,
-    );
-    return;
-  }
-
-  console.log(`Updating ${serviceName} to ${taskDefinitionArn}...`);
-
+  console.log(`Updating ${service}...`);
   run(
     "aws",
     [
       "ecs",
       "update-service",
       "--cluster",
-      clusterName,
+      cluster,
       "--service",
-      serviceName,
+      service,
       "--task-definition",
-      taskDefinitionArn,
+      taskDefinition,
       "--desired-count",
       "1",
       "--no-cli-pager",
@@ -177,60 +159,17 @@ function applyRelease({ updateService, baseTaskDefinition }) {
     { quiet: true },
   );
 
-  console.log(`Waiting for ${serviceName} to become stable...`);
-
-  run(
-    "aws",
-    [
-      "ecs",
-      "wait",
-      "services-stable",
-      "--cluster",
-      clusterName,
-      "--services",
-      serviceName,
-      "--no-cli-pager",
-    ],
-    { quiet: true },
-  );
-
+  console.log(`Waiting for ${service} deployment to be running...`);
+  waitUntilRunning(cluster, service, taskDefinition);
   console.log(`Deployed price-consumer image ${remoteImage}.`);
 }
 
-function currentServiceTaskDefinition(clusterName, serviceName) {
-  const taskDefinition = run(
-    "aws",
-    [
-      "ecs",
-      "describe-services",
-      "--cluster",
-      clusterName,
-      "--services",
-      serviceName,
-      "--query",
-      "services[0].taskDefinition",
-      "--output",
-      "text",
-      "--no-cli-pager",
-    ],
-    { captureOutput: true },
-  ).trim();
-
-  if (!taskDefinition || taskDefinition === "None") {
-    throw new Error(
-      `ECS service ${serviceName} has no current task definition.`,
-    );
-  }
-
-  return taskDefinition;
-}
-
-function registrationFromDescription(taskDefinition, remoteImage) {
+function registrationWithImage(taskDefinition, image) {
   const {
-    taskDefinitionArn: _taskDefinitionArn,
+    taskDefinitionArn: _arn,
     revision: _revision,
     status: _status,
-    requiresAttributes: _requiresAttributes,
+    requiresAttributes: _attributes,
     compatibilities: _compatibilities,
     registeredAt: _registeredAt,
     registeredBy: _registeredBy,
@@ -238,117 +177,91 @@ function registrationFromDescription(taskDefinition, remoteImage) {
     ...registration
   } = taskDefinition;
 
-  let imageUpdated = false;
-
+  let replaced = false;
   registration.containerDefinitions = registration.containerDefinitions.map(
     (container) => {
-      if (container.name !== "price-consumer") {
-        return container;
-      }
-
-      imageUpdated = true;
-      return {
-        ...container,
-        image: remoteImage,
-      };
+      if (container.name !== "price-consumer") return container;
+      replaced = true;
+      return { ...container, image };
     },
   );
-
-  if (!imageUpdated) {
-    throw new Error(
-      'The base task definition does not contain a container named "price-consumer".',
-    );
+  if (!replaced) {
+    throw new Error('Current task definition has no "price-consumer" container.');
   }
-
   return registration;
+}
+
+// The generic services-stable waiter can be delayed by old zero-task
+// deployments, so check only the service and its new PRIMARY deployment.
+function waitUntilRunning(cluster, service, taskDefinition) {
+  const deadline = Date.now() + 5 * 60 * 1000;
+  while (Date.now() < deadline) {
+    const status = JSON.parse(
+      run(
+        "aws",
+        [
+          "ecs",
+          "describe-services",
+          "--cluster",
+          cluster,
+          "--services",
+          service,
+          "--query",
+          "services[0].{desired:desiredCount,running:runningCount,pending:pendingCount,primary:deployments[?status=='PRIMARY']|[0]}",
+          "--output",
+          "json",
+          "--no-cli-pager",
+        ],
+        { capture: true },
+      ),
+    );
+    const primary = status?.primary;
+    if (
+      status?.desired === 1 &&
+      status.running === 1 &&
+      status.pending === 0 &&
+      primary?.taskDefinition === taskDefinition &&
+      primary.desiredCount === 1 &&
+      primary.runningCount === 1 &&
+      primary.pendingCount === 0
+    ) {
+      return;
+    }
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5_000);
+  }
+  throw new Error(`ECS deployment did not start within 5 minutes.`);
 }
 
 function terraformOutput(name) {
   return run(
     "terraform",
     [`-chdir=${terraformDirectory}`, "output", "-raw", name],
-    { captureOutput: true },
+    { capture: true },
   ).trim();
 }
 
-function parseArguments(arguments_) {
-  const baseArgument = arguments_.find((argument) =>
-    argument.startsWith("--base-task-definition="),
-  );
-
-  const supported = new Set(["--apply", "--register-only", baseArgument]);
-  const unknown = arguments_.filter((argument) => !supported.has(argument));
-
-  if (unknown.length > 0) {
-    throw new Error(`Unknown argument: ${unknown.join(", ")}`);
-  }
-
-  if (
-    arguments_.includes("--apply") &&
-    arguments_.includes("--register-only")
-  ) {
-    throw new Error("Use either --apply or --register-only, not both.");
-  }
-
-  const baseTaskDefinition = baseArgument?.slice(
-    "--base-task-definition=".length,
-  );
-
-  if (baseArgument && !baseTaskDefinition) {
-    throw new Error("--base-task-definition requires a value.");
-  }
-
-  if (arguments_.includes("--apply")) {
-    if (baseArgument) {
-      throw new Error(
-        "--base-task-definition is only valid with --register-only.",
-      );
-    }
-
-    return { mode: "apply" };
-  }
-
-  if (arguments_.includes("--register-only")) {
-    return {
-      mode: "register-only",
-      baseTaskDefinition,
-    };
-  }
-
-  if (baseArgument) {
-    throw new Error("--base-task-definition requires --register-only.");
-  }
-
-  return { mode: "prepare" };
+function shouldApply(arguments_) {
+  if (arguments_.length === 0) return false;
+  if (arguments_.length === 1 && arguments_[0] === "--apply") return true;
+  throw new Error(`Usage: node scripts/deploy-price-consumer.mjs [--apply]`);
 }
 
 function run(command, arguments_, options = {}) {
   const result = spawnSync(command, arguments_, {
-    cwd: options.cwd ?? repositoryRoot,
+    cwd: repositoryRoot,
     encoding: "utf8",
     input: options.input,
-    stdio: options.captureOutput
+    stdio: options.capture
       ? [options.input === undefined ? "inherit" : "pipe", "pipe", "inherit"]
       : options.quiet
-        ? [
-            options.input === undefined ? "inherit" : "pipe",
-            "ignore",
-            "inherit",
-          ]
+        ? ["inherit", "ignore", "inherit"]
         : options.input === undefined
           ? "inherit"
           : ["pipe", "inherit", "inherit"],
   });
-
-  if (result.error) {
-    throw new Error(`Could not run ${command}: ${result.error.message}`);
-  }
-
+  if (result.error) throw new Error(`Could not run ${command}: ${result.error.message}`);
   if (result.status !== 0) {
-    throw new Error(
-      `${command} failed with exit code ${result.status ?? "unknown"}.`,
-    );
+    throw new Error(`${command} failed with exit code ${result.status ?? "unknown"}.`);
   }
-
   return result.stdout ?? "";
 }
