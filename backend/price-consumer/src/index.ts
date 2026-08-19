@@ -1,25 +1,48 @@
 import { CoinbasePriceConsumer } from "./coinbasePriceConsumer.js";
-import { AppSyncLivePricePublisher } from "./livePricePublisher.js";
+import { LivePricePublisher } from "./livePricePublisher.js";
 import { MarketPriceProcessor } from "./marketPriceProcessor.js";
 import { PriceHistoryRepository } from "./priceHistoryRepository.js";
 import { log } from "./utils.js";
 
 const PRODUCT = "BTC-USD";
-const tableName = process.env.PRICE_HISTORY_TABLE;
 
-if (!tableName) {
-  log("error", "configuration_error", {
-    missingEnvironmentVariable: "PRICE_HISTORY_TABLE",
-  });
-  process.exitCode = 1;
-} else {
-  void start(tableName);
+interface StartConfig {
+  priceHistoryTable: string;
+  livePriceEventEndpoint: string;
 }
 
-async function start(priceHistoryTable: string): Promise<void> {
+function getConfig(): StartConfig {
+  const priceHistoryTable = process.env.PRICE_HISTORY_TABLE;
+  const livePriceEventEndpoint = process.env.LIVE_PRICE_EVENT_ENDPOINT;
+
+  if (!priceHistoryTable || !livePriceEventEndpoint) {
+    throw new Error("Missing required environment configuration.");
+  }
+
+  return {
+    priceHistoryTable,
+    livePriceEventEndpoint,
+  };
+}
+
+try {
+  const config = getConfig();
+  void start(config);
+} catch (error) {
+  log("error", "configuration_error", {
+    message:
+      error instanceof Error ? error.message : "Unknown configuration error",
+  });
+
+  process.exitCode = 1;
+}
+
+async function start(config: StartConfig): Promise<void> {
   try {
-    const repository = new PriceHistoryRepository(priceHistoryTable);
-    const livePricePublisher = new AppSyncLivePricePublisher();
+    const repository = new PriceHistoryRepository(config.priceHistoryTable);
+    const livePricePublisher = new LivePricePublisher(
+      config.livePriceEventEndpoint,
+    );
     const processor = await MarketPriceProcessor.create({
       repository,
       livePricePublisher,
