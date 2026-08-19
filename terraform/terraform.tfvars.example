@@ -1,1 +1,4 @@
 aws_region = "eu-central-1"
+
+# Set to an immutable Git commit SHA after the initial ECR/bootstrap deployment.
+# price_consumer_image_tag = "0123456789abcdef0123456789abcdef01234567"

@@ -5,3 +5,4 @@
 createPlayer.zip
 .terraform-tmp/
 frontend.zip
+price-consumer-deployment.tfplan

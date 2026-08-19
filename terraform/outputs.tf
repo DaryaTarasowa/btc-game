@@ -19,3 +19,23 @@ output "amplify_default_domain" {
 output "frontend_url" {
   value = "https://${aws_amplify_branch.main.branch_name}.${aws_amplify_app.frontend.default_domain}"
 }
+
+output "price_consumer_ecr_repository_url" {
+  description = "ECR repository URL for the price-consumer image."
+  value       = aws_ecr_repository.price_consumer.repository_url
+}
+
+output "price_consumer_ecs_cluster_name" {
+  description = "ECS cluster running the price consumer."
+  value       = aws_ecs_cluster.application.name
+}
+
+output "price_consumer_ecs_service_name" {
+  description = "ECS service running the price consumer."
+  value       = aws_ecs_service.price_consumer.name
+}
+
+output "price_consumer_log_group_name" {
+  description = "CloudWatch log group for the price consumer."
+  value       = aws_cloudwatch_log_group.price_consumer.name
+}
