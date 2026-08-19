@@ -5,6 +5,19 @@
   border-radius: 24px;
   background: linear-gradient(150deg, rgba(22, 28, 43, 0.96), rgba(12, 16, 27, 0.96));
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.32);
+  transition: border-color 220ms ease, box-shadow 220ms ease, background 220ms ease;
+}
+
+.price-chart--up {
+  border-color: rgba(53, 213, 154, 0.48);
+  background: linear-gradient(150deg, rgba(17, 49, 42, 0.96), rgba(12, 16, 27, 0.96) 58%);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.32), 0 0 38px rgba(53, 213, 154, 0.12);
+}
+
+.price-chart--down {
+  border-color: rgba(255, 104, 119, 0.48);
+  background: linear-gradient(150deg, rgba(55, 25, 35, 0.96), rgba(12, 16, 27, 0.96) 58%);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.32), 0 0 38px rgba(255, 104, 119, 0.12);
 }
 
 .price-chart__header {
@@ -22,6 +35,11 @@
 .price-chart__symbol { color: #f8fafc; font-size: 1rem; font-weight: 800; letter-spacing: 0.04em; }
 .price-chart__symbol span { color: #f7931a; }
 .price-chart__window { margin-top: 6px; color: #77839e; font-size: 0.78rem; }
+.price-chart__bet-state { margin: 8px 0 0; color: #cbd5e1; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.price-chart__bet-state span { display: inline-block; width: 7px; height: 7px; margin-right: 4px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 0 currentColor; animation: bet-pulse 1.6s infinite; }
+.price-chart--up .price-chart__bet-state { color: #35d59a; }
+.price-chart--down .price-chart__bet-state { color: #ff6877; }
+@keyframes bet-pulse { 70% { box-shadow: 0 0 0 8px transparent; } }
 .price-chart__latest { text-align: right; }
 .price-chart__latest span { display: block; color: #77839e; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; }
 .price-chart__latest strong { display: block; margin-top: 4px; color: #fff; font-size: clamp(1.35rem, 3vw, 2rem); font-variant-numeric: tabular-nums; }

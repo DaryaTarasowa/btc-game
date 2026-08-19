@@ -88,6 +88,21 @@ button {
 .game-controls__button--down { color: #2d080b; background: #ff6877; }
 .game-controls__button--down:hover:not(:disabled) { background: #ff8994; }
 
+.active-bet {
+  display: grid;
+  gap: 6px;
+  margin-top: 26px;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  background: rgba(8, 11, 18, 0.5);
+}
+.active-bet span { font-size: 0.72rem; font-weight: 900; letter-spacing: 0.12em; }
+.active-bet strong { font-size: 2.4rem; font-variant-numeric: tabular-nums; line-height: 1; }
+.active-bet small { color: #9ca8c0; }
+.active-bet--up { border-color: rgba(53, 213, 154, 0.4); color: #35d59a; }
+.active-bet--down { border-color: rgba(255, 104, 119, 0.4); color: #ff6877; }
+
 .market-panel { min-width: 0; }
 .market-state {
   min-height: 490px;

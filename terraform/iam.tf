@@ -82,3 +82,41 @@ resource "aws_iam_role_policy" "get_prices_runtime" {
     ]
   })
 }
+
+resource "aws_iam_role" "create_bet" {
+  name                 = "btc-game-create-bet"
+  description          = "Runtime role for the BTC game bet-creation Lambda."
+  assume_role_policy   = local.lambda_trust_policy
+  max_session_duration = 3600
+  permissions_boundary = local.runtime_permissions_boundary_arn
+}
+
+resource "aws_iam_role_policy" "create_bet_runtime" {
+  name = "btc-game-create-bet-runtime"
+  role = aws_iam_role.create_bet.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "arn:aws:logs:${var.aws_region}:*:log-group:/aws/lambda/btc-game-create-bet:*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = "dynamodb:GetItem"
+        Resource = aws_dynamodb_table.price_history.arn
+      },
+      {
+        Effect   = "Allow"
+        Action   = "dynamodb:PutItem"
+        Resource = aws_dynamodb_table.bets.arn
+      }
+    ]
+  })
+}

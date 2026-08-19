@@ -26,7 +26,7 @@ export function useLivePrices() {
       queryClient.setQueryData<MarketPrice[]>(
         recentPricesQueryKey,
         (current = []) => {
-          const cutoff = Date.now() - 10 * 60_000;
+          const cutoff = Date.now() - 3 * 60_000;
 
           return [...current, price].filter(
             (item) => Date.parse(item.eventTimestamp) >= cutoff,

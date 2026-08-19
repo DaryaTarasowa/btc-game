@@ -4,15 +4,20 @@ import {
   ColorType,
   CrosshairMode,
   createChart,
+  createSeriesMarkers,
   type IChartApi,
+  type ISeriesMarkersPluginApi,
   type ISeriesApi,
+  type Time,
   type UTCTimestamp,
 } from "lightweight-charts";
+import type { ActiveBet } from "../../api/bets";
 import type { MarketPrice } from "../../api/prices";
 import "./PriceChart.css";
 
 interface PriceChartProps {
   prices: MarketPrice[];
+  activeBet?: ActiveBet | null;
 }
 
 const priceFormatter = new Intl.NumberFormat(undefined, {
@@ -45,11 +50,12 @@ function toChartData(prices: MarketPrice[]) {
     }));
 }
 
-export function PriceChart({ prices }: PriceChartProps) {
+export function PriceChart({ prices, activeBet }: PriceChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Area"> | null>(null);
+  const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
   const timestampsRef = useRef(new Map<number, string>());
 
   useEffect(() => {
@@ -111,6 +117,7 @@ export function PriceChart({ prices }: PriceChartProps) {
 
     chartRef.current = chart;
     seriesRef.current = series;
+    markersRef.current = createSeriesMarkers(series, []);
 
     chart.subscribeCrosshairMove((parameter) => {
       const tooltip = tooltipRef.current;
@@ -144,6 +151,7 @@ export function PriceChart({ prices }: PriceChartProps) {
       chart.remove();
       chartRef.current = null;
       seriesRef.current = null;
+      markersRef.current = null;
     };
   }, []);
 
@@ -165,19 +173,48 @@ export function PriceChart({ prices }: PriceChartProps) {
       })),
     );
 
+    markersRef.current?.setMarkers(
+      activeBet
+        ? [{
+            time: Math.floor(Date.parse(activeBet.startEventTimestamp) / 1_000) as UTCTimestamp,
+            position: activeBet.direction === "up" ? "belowBar" : "aboveBar",
+            color: activeBet.direction === "up" ? "#35d59a" : "#ff6877",
+            shape: activeBet.direction === "up" ? "arrowUp" : "arrowDown",
+            text: `${activeBet.direction.toUpperCase()} · $${Number(activeBet.startPrice).toLocaleString()}`,
+          }]
+        : [],
+    );
+
+    series.applyOptions({
+      lineColor: activeBet
+        ? activeBet.direction === "up" ? "#35d59a" : "#ff6877"
+        : "#f7a52b",
+      priceLineColor: activeBet
+        ? activeBet.direction === "up" ? "#35d59a" : "#ff6877"
+        : "#f7931a",
+    });
+
     chart.timeScale().fitContent();
-  }, [prices]);
+  }, [activeBet, prices]);
 
   const latest = prices.at(-1);
 
   return (
-    <section className="price-chart" aria-label="BTC to USD price chart">
+    <section
+      className={`price-chart${activeBet ? ` price-chart--active price-chart--${activeBet.direction}` : ""}`}
+      aria-label="BTC to USD price chart"
+    >
       <header className="price-chart__header">
         <div>
           <p className="price-chart__symbol">
             <span aria-hidden="true">₿</span> BTC / USD
           </p>
-          <p className="price-chart__window">Stored market history · 10 min</p>
+          <p className="price-chart__window">Stored market history · 3 min</p>
+          {activeBet && (
+            <p className="price-chart__bet-state">
+              <span aria-hidden="true" /> {activeBet.direction.toUpperCase()} position active
+            </p>
+          )}
         </div>
         <div className="price-chart__latest">
           <span>Latest price</span>
