@@ -36,6 +36,8 @@ const completedBetsSchema = z.object({ bets: z.array(resolvedBetSchema) });
 export const PRICE_HISTORY_RETENTION_MS = 10 * 60 * 60 * 1_000;
 export const BET_CHART_PADDING_MS = 5_000;
 
+export class BetNotFoundError extends Error {}
+
 export interface CreateBetInput {
   direction: BetDirection;
   point: MarketPrice;
@@ -50,7 +52,7 @@ export async function createBet({
 
   const response = await fetch(endpoint, {
     method: "POST",
-    headers: await authHeaders(true),
+    headers: await authHeaders({ "content-type": "application/json" }),
     body: JSON.stringify({
       direction,
       product: point.product,
@@ -73,14 +75,13 @@ export async function createBet({
   return activeBetSchema.parse(await response.json());
 }
 
-export class BetNotFoundError extends Error {}
-
 export async function getBet(
   betId: string,
   signal?: AbortSignal,
 ): Promise<Bet> {
-  const endpoint = import.meta.env.VITE_CREATE_BET_URL;
+  const endpoint = import.meta.env.VITE_CREATE_BET_URL; //TODO introduce a separate endpoint for bet retrieval or rename
   if (!endpoint) throw new Error("The bet endpoint is not configured.");
+
   const response = await fetch(
     `${endpoint.replace(/\/$/, "")}/${encodeURIComponent(betId)}`,
     {
@@ -88,6 +89,7 @@ export async function getBet(
       signal,
     },
   );
+
   if (response.status === 404 || response.status === 403)
     throw new BetNotFoundError("Bet is not accessible.");
   if (!response.ok)

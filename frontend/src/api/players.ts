@@ -35,7 +35,7 @@ export async function getPlayer(signal?: AbortSignal): Promise<Player> {
 export async function ensurePlayer(): Promise<Player> {
   return parsePlayer(await fetch(endpoint(), {
     method: "POST",
-    headers: await authHeaders(true),
+    headers: await authHeaders({ "content-type": "application/json" }),
     body: "{}",
   }));
 }
