@@ -82,6 +82,7 @@ function applyRelease() {
   const cluster = terraformOutput("price_consumer_ecs_cluster_name");
   const service = terraformOutput("price_consumer_ecs_service_name");
   const liveEndpoint = terraformOutput("live_price_event_http_endpoint");
+  const betsTable = terraformOutput("bets_table_name");
 
   const password = run("aws", ["ecr", "get-login-password"], { capture: true });
   run("docker", ["login", "--username", "AWS", "--password-stdin", registry], {
@@ -132,6 +133,7 @@ function applyRelease() {
     described,
     remoteImage,
     liveEndpoint,
+    betsTable,
   );
   const taskDefinition = run(
     "aws",
@@ -181,7 +183,7 @@ function setEnvironmentVariable(environment = [], name, value) {
   return [...withoutExisting, { name, value }];
 }
 
-function registrationForRelease(taskDefinition, image, liveEndpoint) {
+function registrationForRelease(taskDefinition, image, liveEndpoint, betsTable) {
   const {
     taskDefinitionArn: _arn,
     revision: _revision,
@@ -203,9 +205,13 @@ function registrationForRelease(taskDefinition, image, liveEndpoint) {
         ...container,
         image,
         environment: setEnvironmentVariable(
-          container.environment,
-          "APPSYNC_EVENTS_ENDPOINT",
-          liveEndpoint,
+          setEnvironmentVariable(
+            container.environment,
+            "APPSYNC_EVENTS_ENDPOINT",
+            liveEndpoint,
+          ),
+          "BETS_TABLE",
+          betsTable,
         ),
       };
     },

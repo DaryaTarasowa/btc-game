@@ -33,6 +33,11 @@ try {
     [`-chdir=${terraformDirectory}`, "output", "-raw", "create_player_url"],
     { captureOutput: true },
   ).trim();
+  const createBetUrl = run(
+    "terraform",
+    [`-chdir=${terraformDirectory}`, "output", "-raw", "create_bet_url"],
+    { captureOutput: true },
+  ).trim();
 
   if (!skipInstall) {
     run("pnpm", ["install", "--frozen-lockfile"], { cwd: frontendDirectory });
@@ -40,7 +45,11 @@ try {
 
   run("pnpm", ["run", "build"], {
     cwd: frontendDirectory,
-    env: { ...process.env, VITE_CREATE_PLAYER_URL: createPlayerUrl },
+    env: {
+      ...process.env,
+      VITE_CREATE_PLAYER_URL: createPlayerUrl,
+      VITE_CREATE_BET_URL: createBetUrl,
+    },
   });
 
   await createZip(distDirectory, artifactPath);

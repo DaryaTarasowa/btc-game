@@ -18,6 +18,11 @@ output "create_bet_url" {
   value       = "${aws_apigatewayv2_stage.default.invoke_url}bets"
 }
 
+output "bets_table_name" {
+  description = "DynamoDB table containing active and resolved bets."
+  value       = aws_dynamodb_table.bets.name
+}
+
 output "amplify_app_id" {
   value = aws_amplify_app.frontend.id
 }

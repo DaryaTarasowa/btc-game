@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { PricePublisher } from "./types.js";
-import { MarketPriceProcessor, type Logger } from "./marketPriceProcessor.js";
+import {
+  MarketPriceProcessor,
+  type Logger,
+  type MarketBetResolver,
+} from "./marketPriceProcessor.js";
 import type { PriceHistoryRepository } from "./priceHistoryWriter.js";
 import type { MarketPriceEventData } from "./types.js";
 
@@ -44,6 +48,19 @@ class FakePublisher implements PricePublisher {
   }
 }
 
+class FakeBetResolver implements MarketBetResolver {
+  public readonly events: MarketPriceEventData[] = [];
+  public stopped = false;
+
+  public process(value: MarketPriceEventData): void {
+    this.events.push(value);
+  }
+
+  public async stop(): Promise<void> {
+    this.stopped = true;
+  }
+}
+
 interface LogEntry {
   level: string;
   event: string;
@@ -55,15 +72,17 @@ async function createProcessor(
   publisher = new FakePublisher(),
 ) {
   const logs: LogEntry[] = [];
+  const betResolver = new FakeBetResolver();
   const log: Logger = (level, event, details) =>
     logs.push({ level, event, ...(details ? { details } : {}) });
   const processor = await MarketPriceProcessor.create({
     product: "BTC-USD",
     repository,
     livePricePublisher: publisher,
+    betResolver,
     log,
   });
-  return { processor, repository, publisher, logs };
+  return { processor, repository, publisher, betResolver, logs };
 }
 
 test("rejects out-of-order events before persistence", async () => {
@@ -91,7 +110,7 @@ test("rejects out-of-order events before persistence", async () => {
 });
 
 test("does not warn when a newer event has an unchanged price", async () => {
-  const { processor, repository, logs } = await createProcessor();
+  const { processor, repository, betResolver, logs } = await createProcessor();
   processor.process(marketPrice("100", "2026-08-19T10:00:00.000Z"));
   processor.process(marketPrice("100", "2026-08-19T10:00:01.000Z"));
   await processor.stop();
@@ -101,6 +120,10 @@ test("does not warn when a newer event has an unchanged price", async () => {
     ["2026-08-19T10:00:00.000Z"],
   );
   assert.deepEqual(logs, []);
+  assert.deepEqual(
+    betResolver.events.map((value) => value.eventTimestamp),
+    ["2026-08-19T10:00:00.000Z", "2026-08-19T10:00:01.000Z"],
+  );
 });
 
 test("passes accepted events to history and publishes stored points", async () => {
@@ -114,7 +137,7 @@ test("passes accepted events to history and publishes stored points", async () =
 });
 
 test("does not publish a point skipped by the history sampler", async () => {
-  const { processor, publisher } = await createProcessor();
+  const { processor, publisher, betResolver } = await createProcessor();
   processor.process(marketPrice("100", "2026-08-19T10:00:00.000Z"));
   processor.process(marketPrice("101", "2026-08-19T10:00:00.500Z"));
   await processor.stop();
@@ -122,6 +145,10 @@ test("does not publish a point skipped by the history sampler", async () => {
   assert.deepEqual(
     publisher.published.map((value) => value.price),
     ["100"],
+  );
+  assert.deepEqual(
+    betResolver.events.map((value) => value.price),
+    ["100", "101"],
   );
 });
 
@@ -189,4 +216,20 @@ test("stop waits for in-flight processing", async () => {
   releaseWrite();
   await stopping;
   assert.equal(stopped, true);
+});
+
+test("raw unchanged events skipped by history still reach bet resolution", async () => {
+  const { processor, repository, betResolver } = await createProcessor();
+  processor.process(marketPrice("101", "2026-08-19T10:00:59.700Z"));
+  processor.process(marketPrice("101", "2026-08-19T10:01:00.100Z"));
+  await processor.stop();
+
+  assert.deepEqual(
+    repository.writes.map((value) => value.eventTimestamp),
+    ["2026-08-19T10:00:59.700Z"],
+  );
+  assert.deepEqual(
+    betResolver.events.map((value) => value.eventTimestamp),
+    ["2026-08-19T10:00:59.700Z", "2026-08-19T10:01:00.100Z"],
+  );
 });

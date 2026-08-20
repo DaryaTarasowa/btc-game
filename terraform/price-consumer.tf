@@ -150,6 +150,16 @@ resource "aws_iam_role_policy" "price_consumer_task" {
         Effect   = "Allow"
         Action   = "appsync:EventPublish"
         Resource = aws_appsync_channel_namespace.prices.channel_namespace_arn
+      },
+      {
+        Effect   = "Allow"
+        Action   = "dynamodb:Query"
+        Resource = "${aws_dynamodb_table.bets.arn}/index/status-resolution-target-index"
+      },
+      {
+        Effect   = "Allow"
+        Action   = "dynamodb:TransactWriteItems"
+        Resource = aws_dynamodb_table.bets.arn
       }
     ]
   })
