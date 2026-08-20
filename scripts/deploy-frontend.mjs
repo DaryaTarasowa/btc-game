@@ -45,6 +45,11 @@ try {
   ).trim();
   const userPoolId = run("terraform", [`-chdir=${terraformDirectory}`, "output", "-raw", "cognito_user_pool_id"], { captureOutput: true }).trim();
   const userPoolClientId = run("terraform", [`-chdir=${terraformDirectory}`, "output", "-raw", "cognito_user_pool_client_id"], { captureOutput: true }).trim();
+  const marketProducts = run("terraform", [`-chdir=${terraformDirectory}`, "output", "-raw", "market_products"], { captureOutput: true }).trim();
+  const defaultMarketProduct = run("terraform", [`-chdir=${terraformDirectory}`, "output", "-raw", "default_market_product"], { captureOutput: true }).trim();
+  const livePriceChannelPrefix = run("terraform", [`-chdir=${terraformDirectory}`, "output", "-raw", "live_price_event_channel_prefix"], { captureOutput: true }).trim();
+  const livePriceEndpoint = run("terraform", [`-chdir=${terraformDirectory}`, "output", "-raw", "live_price_event_http_endpoint"], { captureOutput: true }).trim();
+  const livePriceApiKey = run("terraform", [`-chdir=${terraformDirectory}`, "output", "-raw", "live_price_event_api_key"], { captureOutput: true }).trim();
 
   if (!skipInstall) {
     run("pnpm", ["install", "--frozen-lockfile"], { cwd: frontendDirectory });
@@ -59,6 +64,11 @@ try {
       VITE_GET_PRICES_URL: priceHistoryUrl,
       VITE_COGNITO_USER_POOL_ID: userPoolId,
       VITE_COGNITO_USER_POOL_CLIENT_ID: userPoolClientId,
+      VITE_MARKET_PRODUCTS: marketProducts,
+      VITE_DEFAULT_MARKET_PRODUCT: defaultMarketProduct,
+      VITE_APPSYNC_EVENTS_CHANNEL_PREFIX: livePriceChannelPrefix,
+      VITE_APPSYNC_EVENTS_ENDPOINT: livePriceEndpoint,
+      VITE_APPSYNC_API_KEY: livePriceApiKey,
     },
   });
 

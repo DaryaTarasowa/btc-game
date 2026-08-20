@@ -1,5 +1,6 @@
 import type { MarketPriceEventData } from "./types.js";
 import { toEpochMilliseconds } from "./utils.js";
+import { MarketPriceProcessingResult } from "./domain.js";
 
 const MINIMUM_HISTORY_INTERVAL_MS = 1_000;
 
@@ -8,7 +9,7 @@ export interface PriceHistoryRepository {
   put(marketPrice: MarketPriceEventData): Promise<void>;
 }
 
-export type MarketPriceProcessingResult = "stored" | "skipped";
+export { MarketPriceProcessingResult };
 
 export interface PriceHistoryWriterSettings {
   product: string;
@@ -46,14 +47,14 @@ export class PriceHistoryWriter {
         );
 
         if (currentTime < lastStoredTime + MINIMUM_HISTORY_INTERVAL_MS) {
-          return "skipped";
+          return MarketPriceProcessingResult.Skipped;
         }
       }
 
       await this.repository.put(marketPrice);
       if (!forceWrite)
         this.lastStoredSourceTimestamp = marketPrice.eventTimestamp;
-      return "stored";
+      return MarketPriceProcessingResult.Stored;
     });
 
     this.queue = operation.then(

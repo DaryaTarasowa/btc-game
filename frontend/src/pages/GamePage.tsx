@@ -8,6 +8,17 @@ import { useCreateBet } from "@/queries/useCreateBet";
 import { useBetSynchronization } from "@/queries/useBetSynchronization";
 import { usePlayerScore } from "@/queries/usePlayerScore";
 import { useResolvedBetChart } from "@/queries/useResolvedBetChart";
+import { BetDirection, BetResult } from "@/domain/bets";
+import { useMarket } from "@/context/useMarket";
+import { marketProductDisplayName } from "@/config/market";
+
+const automaticallyPresentedBetIds = new Set<string>();
+
+export function claimResolutionModal(betId: string, presentedBetIds = automaticallyPresentedBetIds) {
+  if (presentedBetIds.has(betId)) return false;
+  presentedBetIds.add(betId);
+  return true;
+}
 
 function useBetCountdown(targetTimestamp?: string) {
   const [, redraw] = useState(0);
@@ -25,6 +36,8 @@ function useBetCountdown(targetTimestamp?: string) {
 
 export function GamePage() {
   const { playerId, player } = usePlayer();
+  const { product } = useMarket();
+  const productName = marketProductDisplayName(product);
   const recentPrices = useRecentPrices();
   useLivePrices();
   const prices = recentPrices.data ?? [];
@@ -68,7 +81,7 @@ export function GamePage() {
   }, [score]);
 
   useEffect(() => {
-    if (!resolvedBet) return;
+    if (!resolvedBet || !claimResolutionModal(resolvedBet.betId)) return;
     const bounds = marketPanelRef.current?.getBoundingClientRect();
     setModalOrigin(
       bounds
@@ -126,7 +139,7 @@ export function GamePage() {
         )}
         {activeBet && (
           <div
-            className={`mt-6.5 grid gap-1.5 rounded-[18px] border bg-[#080b12]/50 p-4.5 ${activeBet.direction === "up" ? "border-up/40 text-up" : "border-down/40 text-down"}`}
+            className={`mt-6.5 grid gap-1.5 rounded-[18px] border bg-[#080b12]/50 p-4.5 ${activeBet.direction === BetDirection.Up ? "border-up/40 text-up" : "border-down/40 text-down"}`}
           >
             <span className="text-xs font-black tracking-[0.12em]">
               {activeBet.direction.toUpperCase()} BET ACTIVE
@@ -168,7 +181,7 @@ export function GamePage() {
               aria-hidden="true"
             />
             <strong className="text-slate-200">
-              Loading BTC market history
+              Loading {productName} market history
             </strong>
             <span>Reading the latest stored trades…</span>
           </div>
@@ -179,7 +192,7 @@ export function GamePage() {
           </div>
         ) : prices.length === 0 ? (
           <div className={marketStateClass}>
-            <strong className="text-slate-200">No recent BTC prices</strong>
+            <strong className="text-slate-200">No recent {productName} prices</strong>
             <span>
               The market feed has not stored any trades in the last 3 minutes.
             </span>
@@ -198,7 +211,7 @@ export function GamePage() {
           }}
         >
           <section
-            className={`max-h-[calc(100vh-48px)] w-full max-w-[980px] overflow-auto rounded-[26px] border bg-[#111622] p-[clamp(16px,3vw,28px)] shadow-[0_28px_100px_rgba(0,0,0,0.7)] motion-safe:animate-[resolution-dialog-in_380ms_cubic-bezier(0.16,1,0.3,1)_both] ${resolvedBet.result === "won" ? "border-up/60" : "border-down/60"}`}
+            className={`max-h-[calc(100vh-48px)] w-full max-w-[980px] overflow-auto rounded-[26px] border bg-[#111622] p-[clamp(16px,3vw,28px)] shadow-[0_28px_100px_rgba(0,0,0,0.7)] motion-safe:animate-[resolution-dialog-in_380ms_cubic-bezier(0.16,1,0.3,1)_both] ${resolvedBet.result === BetResult.Won ? "border-up/60" : "border-down/60"}`}
             role="dialog"
             aria-modal="true"
             aria-labelledby="resolution-modal-title"
@@ -213,10 +226,10 @@ export function GamePage() {
               <div>
                 <p className={eyebrowClass}>BET RESOLVED</p>
                 <h2
-                  className={`m-0 text-[clamp(1.8rem,5vw,3.2rem)] leading-none ${resolvedBet.result === "won" ? "text-up" : "text-down"}`}
+                  className={`m-0 text-[clamp(1.8rem,5vw,3.2rem)] leading-none ${resolvedBet.result === BetResult.Won ? "text-up" : "text-down"}`}
                   id="resolution-modal-title"
                 >
-                  {resolvedBet.result === "won" ? "You won +1" : "You lost −1"}
+                  {resolvedBet.result === BetResult.Won ? "You won +1" : "You lost −1"}
                 </h2>
               </div>
               <button

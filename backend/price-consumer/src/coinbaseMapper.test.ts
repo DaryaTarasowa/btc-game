@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { normalizeCoinbaseMessage } from "./coinbaseMapper.js";
+import { normalizeCoinbaseMessage as normalizeConfiguredCoinbaseMessage } from "./coinbaseMapper.js";
 
 const RECEIVED_TIMESTAMP = "2026-08-18T18:30:12.140Z";
 const EVENT_TIMESTAMP = "2026-08-18T18:30:12.123456Z";
+const PRODUCTS = ["BTC-USD"];
+const normalizeCoinbaseMessage = (value: unknown, receivedTimestamp: string) =>
+  normalizeConfiguredCoinbaseMessage(value, receivedTimestamp, PRODUCTS);
 
 test("normalizes a valid BTC-USD ticker", () => {
   const marketPrice = normalizeCoinbaseMessage(

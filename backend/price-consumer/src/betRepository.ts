@@ -4,12 +4,14 @@ import {
   QueryCommand,
   TransactWriteCommand,
 } from "@aws-sdk/lib-dynamodb";
+import { BetDirection, BetResult, BetStatus, ResolutionWriteResult } from "./domain.js";
 
 export interface ActiveBet {
   betId: string;
   playerId: string;
-  direction: "up" | "down";
-  status: "active";
+  product: string;
+  direction: BetDirection;
+  status: BetStatus.Active;
   startPrice: string;
   startEventTimestamp: string;
   resolutionTargetTimestamp: string;
@@ -19,10 +21,10 @@ export interface ActiveBet {
 export interface BetResolution {
   endPrice: string;
   endEventTimestamp: string;
-  result: "won" | "lost";
+  result: BetResult;
 }
 
-export type ResolutionWriteResult = "resolved" | "already_resolved";
+export { ResolutionWriteResult };
 
 export interface BetStore {
   queryActiveThrough(upperBound: string): Promise<ActiveBet[]>;
@@ -64,7 +66,7 @@ export class BetRepository implements BetStore {
             "#resolutionTargetTimestamp": "resolutionTargetTimestamp",
           },
           ExpressionAttributeValues: {
-            ":active": "active",
+            ":active": BetStatus.Active,
             ":upperBound": upperBound,
           },
           ExclusiveStartKey: exclusiveStartKey,
@@ -98,8 +100,8 @@ export class BetRepository implements BetStore {
                   "#result": "result",
                 },
                 ExpressionAttributeValues: {
-                  ":active": "active",
-                  ":resolved": "resolved",
+                  ":active": BetStatus.Active,
+                  ":resolved": BetStatus.Resolved,
                   ":endPrice": resolution.endPrice,
                   ":endEventTimestamp": resolution.endEventTimestamp,
                   ":result": resolution.result,
@@ -115,14 +117,14 @@ export class BetRepository implements BetStore {
                 ExpressionAttributeNames: { "#score": "score" },
                 ExpressionAttributeValues: {
                   ":id": bet.betId,
-                  ":scoreChange": resolution.result === "won" ? 1 : -1,
+                  ":scoreChange": resolution.result === BetResult.Won ? 1 : -1,
                 },
               },
             },
           ],
         }),
       );
-      return "resolved";
+      return ResolutionWriteResult.Resolved;
     } catch (error: unknown) {
       if (
         error instanceof Error &&
@@ -130,10 +132,11 @@ export class BetRepository implements BetStore {
         "CancellationReasons" in error &&
         Array.isArray(error.CancellationReasons) &&
         error.CancellationReasons.some(
-          (reason: { Code?: string }) => reason.Code === "ConditionalCheckFailed",
+          (reason: { Code?: string }) =>
+            reason.Code === "ConditionalCheckFailed",
         )
       ) {
-        return "already_resolved";
+        return ResolutionWriteResult.AlreadyResolved;
       }
       throw error;
     }

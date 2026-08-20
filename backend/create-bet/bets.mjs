@@ -1,5 +1,6 @@
-const PRODUCT = "BTC-USD";
+import { BetDirection, BetStatus } from "./domain.mjs";
 const PLAYER_ID_PATTERN = /^[A-Za-z0-9._:@-]{1,128}$/;
+const PRODUCT_PATTERN = /^[A-Z0-9]+-[A-Z0-9]+$/;
 const POSITIVE_DECIMAL_PATTERN = /^(?:0*[1-9]\d*)(?:\.\d+)?$|^0*\.\d*[1-9]\d*$/;
 const TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.(\d+))?(?:Z|[+-]\d{2}:\d{2})$/;
 
@@ -17,11 +18,14 @@ export function validateCreateBetRequest(value) {
     throw new BetCreationError("invalid_request", 400, "Request body must be an object.");
   }
 
-  const { playerId, direction, startPrice, startEventTimestamp } = value;
+  const { playerId, product, direction, startPrice, startEventTimestamp } = value;
   if (typeof playerId !== "string" || !PLAYER_ID_PATTERN.test(playerId)) {
     throw new BetCreationError("invalid_player_id", 400, "playerId is invalid.");
   }
-  if (direction !== "up" && direction !== "down") {
+  if (typeof product !== "string" || !PRODUCT_PATTERN.test(product)) {
+    throw new BetCreationError("invalid_product", 400, "product is invalid.");
+  }
+  if (direction !== BetDirection.Up && direction !== BetDirection.Down) {
     throw new BetCreationError("invalid_direction", 400, "direction must be up or down.");
   }
   if (typeof startPrice !== "string" || !POSITIVE_DECIMAL_PATTERN.test(startPrice)) {
@@ -35,7 +39,7 @@ export function validateCreateBetRequest(value) {
     throw new BetCreationError("invalid_start_timestamp", 400, "startEventTimestamp must be a valid timestamp.");
   }
 
-  return { playerId, direction, startPrice, startEventTimestamp };
+  return { playerId, product, direction, startPrice, startEventTimestamp };
 }
 
 export function addSixtySeconds(timestamp) {
@@ -72,8 +76,11 @@ export function createBetTransaction(bet, betsTable, playersTable) {
 
 export async function createBet(request, dependencies) {
   const input = validateCreateBetRequest(request);
+  if (!dependencies.products.includes(input.product)) {
+    throw new BetCreationError("unsupported_product", 400, "product is not configured.");
+  }
   const historyPoint = await dependencies.getHistoryPoint(
-    PRODUCT,
+    input.product,
     input.startEventTimestamp,
   );
 
@@ -88,8 +95,9 @@ export async function createBet(request, dependencies) {
   const bet = {
     betId,
     playerId: input.playerId,
+    product: input.product,
     direction: input.direction,
-    status: "active",
+    status: BetStatus.Active,
     startPrice: input.startPrice,
     startEventTimestamp: input.startEventTimestamp,
     resolutionTargetTimestamp: addSixtySeconds(input.startEventTimestamp),

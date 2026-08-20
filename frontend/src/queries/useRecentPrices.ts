@@ -6,8 +6,9 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { subscribeToLivePrices } from "@/api/livePrices";
 import type { MarketPrice } from "@/api/prices";
+import { useMarket } from "@/context/useMarket";
 
-const recentPricesQueryKey = ["prices", "recent"] as const;
+const recentPricesQueryKey = (product: string) => ["prices", product, "recent"] as const;
 
 export function appendRecentPrice(
   current: MarketPrice[],
@@ -21,21 +22,24 @@ export function appendRecentPrice(
 }
 
 export function useRecentPrices() {
+  const { product } = useMarket();
   return useQuery({
-    queryKey: recentPricesQueryKey,
-    queryFn: getRecentPrices,
+    queryKey: recentPricesQueryKey(product),
+    queryFn: ({ signal }) => getRecentPrices({ product, signal }),
   });
 }
 
 export function useLivePrices() {
   const queryClient = useQueryClient();
+  const { product } = useMarket();
 
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
 
-    void subscribeToLivePrices((price) => {
+    void subscribeToLivePrices(product, (price) => {
+      if (price.product !== product) return;
       queryClient.setQueryData<MarketPrice[]>(
-        recentPricesQueryKey,
+        recentPricesQueryKey(product),
         (current = []) => appendRecentPrice(current, price),
       );
     }).then((cleanup) => {
@@ -45,5 +49,5 @@ export function useLivePrices() {
     return () => {
       unsubscribe?.();
     };
-  }, [queryClient]);
+  }, [product, queryClient]);
 }

@@ -1,5 +1,6 @@
 import type { ActiveBet, BetResolution, BetStore } from "./betRepository.js";
 import type { MarketPriceEventData } from "./types.js";
+import { BetDirection, BetResult } from "./domain.js";
 import {
   toEpochNanoseconds,
   type LogLevel,
@@ -115,6 +116,7 @@ export class BetResolver {
   }
 
   private shouldResolve(bet: ActiveBet, event: MarketPriceEventData): boolean {
+    if (bet.product !== event.product) return false;
     const eventTime = toEpochNanoseconds(event.eventTimestamp);
     const targetTime = toEpochNanoseconds(bet.resolutionTargetTimestamp);
 
@@ -144,13 +146,13 @@ export class BetResolver {
           endPrice: event.price,
           endEventTimestamp: event.eventTimestamp,
           result:
-            bet.direction === "up"
+            bet.direction === BetDirection.Up
               ? comparison > 0
-                ? "won"
-                : "lost"
+                ? BetResult.Won
+                : BetResult.Lost
               : comparison < 0
-                ? "won"
-                : "lost",
+                ? BetResult.Won
+                : BetResult.Lost,
         };
 
         this.retainedResolutions.set(bet.betId, resolution);

@@ -15,6 +15,8 @@ import {
 } from "lightweight-charts";
 import type { ActiveBet, ResolvedBet } from "@/api/bets";
 import type { MarketPrice } from "@/api/prices";
+import { BetDirection, BetResult, BetStatus } from "@/domain/bets";
+import { marketProductDisplayName } from "@/config/market";
 
 interface PriceChartProps {
   prices: MarketPrice[];
@@ -65,20 +67,20 @@ export function chartHeadlinePrice(
   bet: ActiveBet | ResolvedBet | null | undefined,
   staticHistory: boolean,
 ): string | undefined {
-  if (staticHistory && bet?.status === "resolved") return bet.endPrice;
+  if (staticHistory && bet?.status === BetStatus.Resolved) return bet.endPrice;
   return prices.at(-1)?.price;
 }
 
 function resultColor(bet: ResolvedBet) {
-  return bet.result === "won" ? "#35d59a" : "#ff6877";
+  return bet.result === BetResult.Won ? "#35d59a" : "#ff6877";
 }
 
 export function betGraphColor(bet: ActiveBet | ResolvedBet) {
-  return bet.direction === "up" ? "#35d59a" : "#ff6877";
+  return bet.direction === BetDirection.Up ? "#35d59a" : "#ff6877";
 }
 
 export function staticGraphFillColors(bet: ResolvedBet) {
-  return bet.direction === "up"
+  return bet.direction === BetDirection.Up
     ? { top: "rgba(53, 213, 154, 0.28)", bottom: "rgba(53, 213, 154, 0.015)" }
     : { top: "rgba(255, 104, 119, 0.28)", bottom: "rgba(255, 104, 119, 0.015)" };
 }
@@ -87,7 +89,11 @@ export function referencePriceLineOptions(
   bet: ActiveBet | ResolvedBet | null | undefined,
   staticHistory: boolean,
 ) {
-  if (!staticHistory || bet?.status !== "resolved") return [];
+  if (!bet) return [];
+  if (!staticHistory && bet.status === BetStatus.Active) {
+    return [{ price: Number(bet.startPrice), color: betGraphColor(bet), lineWidth: 1 as const, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: "Placed" }];
+  }
+  if (!staticHistory || bet.status !== BetStatus.Resolved) return [];
   const color = resultColor(bet);
   return [
     { price: Number(bet.startPrice), color, lineWidth: 1 as const, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: "Placed" },
@@ -95,11 +101,18 @@ export function referencePriceLineOptions(
   ];
 }
 
+export function activeBetChartRange(bet: ActiveBet) {
+  return {
+    from: Math.floor((Date.parse(bet.startEventTimestamp) - 5_000) / 1_000) as UTCTimestamp,
+    to: Math.floor(Date.parse(bet.resolutionTargetTimestamp) / 1_000) as UTCTimestamp,
+  };
+}
+
 export function betGuideColors(bet: ActiveBet | ResolvedBet) {
-  const annotationColor = bet.status === "resolved" ? resultColor(bet) : betGraphColor(bet);
+  const annotationColor = bet.status === BetStatus.Resolved ? resultColor(bet) : betGraphColor(bet);
   return {
     creation: annotationColor,
-    resolution: bet.status === "resolved" ? annotationColor : null,
+    resolution: annotationColor,
   };
 }
 
@@ -113,6 +126,7 @@ export function PriceChart({ prices, bet, staticHistory = false }: PriceChartPro
   const timestampsRef = useRef(new Map<number, string>());
   const creationGuideRef = useRef<HTMLDivElement>(null);
   const resolutionGuideRef = useRef<HTMLDivElement>(null);
+  const creationDotRef = useRef<HTMLDivElement>(null);
   const resolutionDotRef = useRef<HTMLDivElement>(null);
   const betRef = useRef(bet);
   const staticHistoryRef = useRef(staticHistory);
@@ -123,18 +137,28 @@ export function PriceChart({ prices, bet, staticHistory = false }: PriceChartPro
     const chart = chartRef.current;
     const series = seriesRef.current;
     const currentBet = betRef.current;
-    if (!chart || !series || !staticHistoryRef.current || currentBet?.status !== "resolved") return;
+    if (!chart || !series || !currentBet) return;
 
     const creationX = chart.timeScale().timeToCoordinate(
       Math.floor(Date.parse(currentBet.startEventTimestamp) / 1_000) as UTCTimestamp,
     );
+    const resolutionTimestamp = currentBet.status === BetStatus.Resolved
+      ? currentBet.endEventTimestamp
+      : currentBet.resolutionTargetTimestamp;
     const resolutionX = chart.timeScale().timeToCoordinate(
-      Math.floor(Date.parse(currentBet.endEventTimestamp) / 1_000) as UTCTimestamp,
+      Math.floor(Date.parse(resolutionTimestamp) / 1_000) as UTCTimestamp,
     );
-    const resolutionY = series.priceToCoordinate(Number(currentBet.endPrice));
+    const creationY = series.priceToCoordinate(Number(currentBet.startPrice));
+    const resolutionY = currentBet.status === BetStatus.Resolved
+      ? series.priceToCoordinate(Number(currentBet.endPrice))
+      : null;
 
     if (creationGuideRef.current && creationX !== null) creationGuideRef.current.style.left = `${creationX}px`;
     if (resolutionGuideRef.current && resolutionX !== null) resolutionGuideRef.current.style.left = `${resolutionX}px`;
+    if (creationDotRef.current && creationX !== null && creationY !== null) {
+      creationDotRef.current.style.left = `${creationX}px`;
+      creationDotRef.current.style.top = `${creationY}px`;
+    }
     if (resolutionDotRef.current && resolutionX !== null && resolutionY !== null) {
       resolutionDotRef.current.style.left = `${resolutionX}px`;
       resolutionDotRef.current.style.top = `${resolutionY}px`;
@@ -182,6 +206,7 @@ export function PriceChart({ prices, bet, staticHistory = false }: PriceChartPro
       localization: {
         priceFormatter: (price: number) => priceFormatter.format(price),
       },
+      handleScroll: false,
       handleScale: { axisPressedMouseMove: false },
     });
 
@@ -248,7 +273,7 @@ export function PriceChart({ prices, bet, staticHistory = false }: PriceChartPro
     const chart = chartRef.current;
     if (!series || !chart) return;
 
-    const authoritativeTimestamps = staticHistory && bet?.status === "resolved"
+    const authoritativeTimestamps = staticHistory && bet?.status === BetStatus.Resolved
       ? [bet.startEventTimestamp, bet.endEventTimestamp]
       : [];
     const chartData = toChartData(prices, authoritativeTimestamps);
@@ -257,30 +282,30 @@ export function PriceChart({ prices, bet, staticHistory = false }: PriceChartPro
       chartData.map((point) => [point.time, point.eventTimestamp]),
     );
 
-    series.setData(
-      chartData.map(({ time, value }) => ({
+    const seriesData = chartData.map(({ time, value }) => ({
         time,
         value,
-      })),
-    );
+      }));
+    if (!staticHistory && bet?.status === BetStatus.Active) {
+      const targetTime = activeBetChartRange(bet).to;
+      const activeSeriesData = seriesData.some(({ time }) => time === targetTime)
+        ? seriesData
+        : [...seriesData, { time: targetTime }];
+      activeSeriesData.sort((left, right) => Number(left.time) - Number(right.time));
+      series.setData(activeSeriesData);
+    } else {
+      series.setData(seriesData);
+    }
 
     const guideColors = bet ? betGuideColors(bet) : null;
     markersRef.current?.setMarkers(
-      bet
-        ? [{
-            time: Math.floor(Date.parse(bet.startEventTimestamp) / 1_000) as UTCTimestamp,
-            position: bet.direction === "up" ? "belowBar" : "aboveBar",
-            color: staticHistory && guideColors ? guideColors.creation : betGraphColor(bet),
-            shape: bet.direction === "up" ? "arrowUp" : "arrowDown",
-            text: `${bet.direction.toUpperCase()} · $${Number(bet.startPrice).toLocaleString()}`,
-          }]
-        : [],
+      [],
     );
 
     for (const line of referencePriceLinesRef.current) series.removePriceLine(line);
     const referenceLines = referencePriceLineOptions(bet, staticHistory);
     referencePriceLinesRef.current = referenceLines.map((line) => series.createPriceLine(line));
-    const staticFill = staticHistory && bet?.status === "resolved" ? staticGraphFillColors(bet) : null;
+    const staticFill = staticHistory && bet?.status === BetStatus.Resolved ? staticGraphFillColors(bet) : null;
 
     series.applyOptions({
       lineColor: bet
@@ -296,7 +321,11 @@ export function PriceChart({ prices, bet, staticHistory = false }: PriceChartPro
       crosshairMarkerBackgroundColor: staticHistory && bet ? betGraphColor(bet) : "#f7931a",
     });
 
-    chart.timeScale().fitContent();
+    if (!staticHistory && bet?.status === BetStatus.Active) {
+      chart.timeScale().setVisibleRange(activeBetChartRange(bet));
+    } else {
+      chart.timeScale().fitContent();
+    }
     const animationFrame = requestAnimationFrame(positionHistoryGuides);
     return () => cancelAnimationFrame(animationFrame);
   }, [bet, prices, staticHistory]);
@@ -304,29 +333,30 @@ export function PriceChart({ prices, bet, staticHistory = false }: PriceChartPro
   const headlinePrice = chartHeadlinePrice(prices, bet, staticHistory);
   const guideColors = bet ? betGuideColors(bet) : null;
   const visualState = bet
-    ? staticHistory && bet.status === "resolved" ? bet.result : bet.direction
+    ? staticHistory && bet.status === BetStatus.Resolved ? bet.result : bet.direction
     : null;
-  const stateClass = visualState === "up" || visualState === "won"
+  const stateClass = visualState === BetDirection.Up || visualState === BetResult.Won
     ? "border-up/50 bg-[linear-gradient(150deg,rgba(17,49,42,0.96),rgba(12,16,27,0.96)_58%)] shadow-[0_24px_80px_rgba(0,0,0,0.32),0_0_38px_rgba(53,213,154,0.12)]"
-    : visualState === "down" || visualState === "lost"
+    : visualState === BetDirection.Down || visualState === BetResult.Lost
       ? "border-down/50 bg-[linear-gradient(150deg,rgba(55,25,35,0.96),rgba(12,16,27,0.96)_58%)] shadow-[0_24px_80px_rgba(0,0,0,0.32),0_0_38px_rgba(255,104,119,0.12)]"
       : "border-white/10 bg-[linear-gradient(150deg,rgba(22,28,43,0.96),rgba(12,16,27,0.96))] shadow-[0_24px_80px_rgba(0,0,0,0.32)]";
-  const annotationTextClass = visualState === "up" || visualState === "won" ? "text-up" : "text-down";
+  const annotationTextClass = visualState === BetDirection.Up || visualState === BetResult.Won ? "text-up" : "text-down";
+  const product = bet?.product ?? prices[0]?.product;
 
   return (
     <section
       className={`min-w-0 overflow-hidden rounded-3xl border transition-[border-color,box-shadow,background] duration-200 ${stateClass}`}
-      aria-label="BTC to USD price chart"
+      aria-label={`${product ? marketProductDisplayName(product) : "Market"} price chart`}
     >
       <header className="flex items-start justify-between gap-6 px-7 pt-6 pb-2 max-[560px]:px-4.5 max-[560px]:pt-5 max-[560px]:pb-1.5">
         <div>
           <p className="m-0 text-base font-extrabold tracking-[0.04em] text-slate-50">
-            <span className="text-bitcoin" aria-hidden="true">₿</span> BTC / USD
+            <span className="text-bitcoin" aria-hidden="true">₿</span> {product ? marketProductDisplayName(product) : "—"}
           </p>
           <p className="mt-1.5 mb-0 text-xs text-[#77839e]">{staticHistory ? "Stored bet window" : "Stored market history · 3 min"}</p>
           {bet && (
             <p className={`mt-2 mb-0 text-xs font-extrabold tracking-[0.08em] uppercase ${annotationTextClass}`}>
-              <span className="mr-1 inline-block size-[7px] rounded-full bg-current shadow-[0_0_0_0_currentColor] motion-safe:animate-[bet-pulse_1.6s_infinite]" aria-hidden="true" /> {bet.status === "resolved" ? `${bet.result.toUpperCase()} ${bet.direction.toUpperCase()} prediction` : `${bet.direction.toUpperCase()} position active`}
+              <span className="mr-1 inline-block size-[7px] rounded-full bg-current shadow-[0_0_0_0_currentColor] motion-safe:animate-[bet-pulse_1.6s_infinite]" aria-hidden="true" /> {bet.status === BetStatus.Resolved ? `${bet.result.toUpperCase()} ${bet.direction.toUpperCase()} prediction` : `${bet.direction.toUpperCase()} position active`}
             </p>
           )}
         </div>
@@ -339,7 +369,7 @@ export function PriceChart({ prices, bet, staticHistory = false }: PriceChartPro
       </header>
       <div className="relative min-h-[390px] w-full" ref={containerRef}>
         <div className="pointer-events-none absolute z-[2] min-w-[130px] rounded-[10px] border border-bitcoin/35 bg-[#080b12]/95 px-3 py-2.5 shadow-[0_8px_28px_rgba(0,0,0,0.4)] [&_span]:mt-0.5 [&_span]:block [&_span]:text-xs [&_span]:text-slate-400 [&_strong]:block [&_strong]:text-sm [&_strong]:text-white [&_strong]:[font-variant-numeric:tabular-nums]" ref={tooltipRef} hidden />
-        {staticHistory && bet?.status === "resolved" && guideColors && (
+        {bet && guideColors && (staticHistory ? bet.status === BetStatus.Resolved : bet.status === BetStatus.Active) && (
           <>
             <div
               className="pointer-events-none absolute inset-y-0 z-[2] w-0 border-l border-dotted border-current opacity-50"
@@ -355,10 +385,18 @@ export function PriceChart({ prices, bet, staticHistory = false }: PriceChartPro
             />
             <div
               className="pointer-events-none absolute z-[3] size-[11px] -translate-1/2 rounded-full border-2 border-[#101521] bg-current shadow-[0_0_0_2px_currentColor]"
-              ref={resolutionDotRef}
-              style={{ color: guideColors.resolution ?? undefined }}
+              ref={creationDotRef}
+              style={{ color: guideColors.creation }}
               aria-hidden="true"
             />
+            {bet.status === BetStatus.Resolved && (
+              <div
+                className="pointer-events-none absolute z-[3] size-[11px] -translate-1/2 rounded-full border-2 border-[#101521] bg-current shadow-[0_0_0_2px_currentColor]"
+                ref={resolutionDotRef}
+                style={{ color: guideColors.resolution ?? undefined }}
+                aria-hidden="true"
+              />
+            )}
           </>
         )}
       </div>

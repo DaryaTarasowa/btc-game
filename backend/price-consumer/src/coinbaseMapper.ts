@@ -1,4 +1,5 @@
 import type { MarketPriceEventData } from "./types.js";
+import { CoinbaseMessageType } from "./domain.js";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -26,13 +27,15 @@ export function getMessageType(value: unknown): string | null {
 export function normalizeCoinbaseMessage(
   value: unknown,
   receivedTimestamp: string,
+  products: readonly string[],
 ): MarketPriceEventData | null {
-  if (!isRecord(value) || value.type !== "ticker") {
+  if (!isRecord(value) || value.type !== CoinbaseMessageType.Ticker) {
     return null;
   }
 
   if (
-    value.product_id !== "BTC-USD" ||
+    typeof value.product_id !== "string" ||
+    !products.includes(value.product_id) ||
     typeof value.price !== "string" ||
     !isPositiveDecimal(value.price) ||
     typeof value.time !== "string" ||
@@ -42,7 +45,7 @@ export function normalizeCoinbaseMessage(
   }
 
   return {
-    product: "BTC-USD",
+    product: value.product_id,
     price: value.price,
     eventTimestamp: value.time,
     receivedTimestamp,

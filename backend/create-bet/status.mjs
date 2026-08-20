@@ -10,7 +10,7 @@ export function resolvedBetsQuery(playerId) {
     ExpressionAttributeNames: { "#status": "status" },
     ExpressionAttributeValues: {
       ":playerId": playerId,
-      ":resolved": "resolved",
+      ":resolved": BetStatus.Resolved,
     },
     ConsistentRead: true,
   };
@@ -19,3 +19,4 @@ export function resolvedBetsQuery(playerId) {
 export function sortResolvedBets(bets) {
   return [...bets].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
 }
+import { BetStatus } from "./domain.mjs";

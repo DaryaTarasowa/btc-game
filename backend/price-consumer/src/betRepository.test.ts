@@ -3,12 +3,14 @@ import test from "node:test";
 import type { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import { QueryCommand, TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
 import { BetRepository, type ActiveBet } from "./betRepository.js";
+import { BetDirection, BetResult, BetStatus, ResolutionWriteResult } from "./domain.js";
 
 const activeBet: ActiveBet = {
   betId: "bet-1",
   playerId: "player-1",
-  direction: "up",
-  status: "active",
+  product: "BTC-USD",
+  direction: BetDirection.Up,
+  status: BetStatus.Active,
   startPrice: "100",
   startEventTimestamp: "2026-08-20T12:00:00.000Z",
   resolutionTargetTimestamp: "2026-08-20T12:01:00.000Z",
@@ -48,7 +50,7 @@ test("atomically resolves the stable bet item and updates its player", async () 
     await repository.resolveBetConditionally(activeBet, {
       endPrice: "101",
       endEventTimestamp: "2026-08-20T12:01:00.100Z",
-      result: "won",
+      result: BetResult.Won,
     }),
     "resolved",
   );
@@ -90,7 +92,7 @@ test("a loss subtracts one point in the resolution transaction", async () => {
   await repository.resolveBetConditionally(activeBet, {
     endPrice: "99",
     endEventTimestamp: "2026-08-20T12:01:00.100Z",
-    result: "lost",
+    result: BetResult.Lost,
   });
 
   assert.ok(command instanceof TransactWriteCommand);
@@ -117,7 +119,7 @@ test("a failed active condition is treated as already resolved", async () => {
     await repository.resolveBetConditionally(activeBet, {
       endPrice: "101",
       endEventTimestamp: "2026-08-20T12:01:00.100Z",
-      result: "won",
+      result: BetResult.Won,
     }),
     "already_resolved",
   );
@@ -143,7 +145,7 @@ test("a stale player activeBetId is treated as an already completed resolution",
     await repository.resolveBetConditionally(activeBet, {
       endPrice: "101",
       endEventTimestamp: "2026-08-20T12:01:00.100Z",
-      result: "won",
+      result: BetResult.Won,
     }),
     "already_resolved",
   );

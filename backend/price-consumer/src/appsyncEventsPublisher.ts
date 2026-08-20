@@ -4,7 +4,6 @@ import { HttpRequest } from "@smithy/protocol-http";
 import { SignatureV4 } from "@smithy/signature-v4";
 import type { LiveMarketPrice, PricePublisher } from "./types.js";
 
-const CHANNEL = "/prices/BTC-USD";
 const SERVICE = "appsync";
 const REGION = "eu-central-1";
 
@@ -12,7 +11,7 @@ type RequestSigner = Pick<SignatureV4, "sign">;
 type Fetcher = typeof fetch;
 
 /**
- * Publishes live BTC/USD market prices to the AppSync Events channel.
+ * Publishes live market prices to the product-specific AppSync Events channel.
  *
  * Signs each request with AWS Signature V4 using the runtime AWS credentials
  * and sends the market price to the configured AppSync Events endpoint.
@@ -20,6 +19,7 @@ type Fetcher = typeof fetch;
 export class AppsyncEventsPublisher implements PricePublisher {
   public constructor(
     private readonly endpoint: string,
+    private readonly channelPrefix: string,
     private readonly signer: RequestSigner = new SignatureV4({
       credentials: fromNodeProviderChain(),
       region: REGION,
@@ -33,7 +33,7 @@ export class AppsyncEventsPublisher implements PricePublisher {
     const url = new URL(this.endpoint);
 
     const body = JSON.stringify({
-      channel: CHANNEL,
+      channel: `${this.channelPrefix.replace(/\/$/, "")}/${marketPrice.product}`,
       events: [JSON.stringify(marketPrice)],
     });
 
