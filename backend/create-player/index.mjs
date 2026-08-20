@@ -1,5 +1,6 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { BatchWriteCommand, DeleteCommand, DynamoDBDocumentClient, GetCommand, QueryCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import { claimsFrom, validUsername } from "./players.mjs";
 
 const dynamodb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const playersTable = process.env.PLAYERS_TABLE;
@@ -10,18 +11,6 @@ const response = (statusCode, body) => ({
   headers: { "content-type": "application/json" },
   body: JSON.stringify(body),
 });
-
-function claimsFrom(event) {
-  const claims = event?.requestContext?.authorizer?.jwt?.claims;
-  if (typeof claims?.sub !== "string" || typeof claims?.email !== "string") throw new Error("Authenticated JWT claims are missing.");
-  return claims;
-}
-
-function validUsername(value) {
-  if (typeof value !== "string") return null;
-  const username = value.trim();
-  return /^[\p{L}\p{N}_. -]{2,32}$/u.test(username) ? username : null;
-}
 
 async function deleteBets(playerId) {
   let cursor;

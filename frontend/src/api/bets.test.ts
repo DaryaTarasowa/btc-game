@@ -75,3 +75,42 @@ test("sends the exact visible price and event timestamp", async () => {
     }),
   );
 });
+
+test("uses a backend bet-creation error when one is provided", async () => {
+  vi.stubEnv("VITE_CREATE_BET_URL", "https://example.test/bets");
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+    ok: false,
+    status: 409,
+    json: async () => ({ message: "An active bet already exists." }),
+  }));
+  await expect(createBet({ direction: "down", point: { price: "100", eventTimestamp: "2026-08-20T12:00:00Z" } }))
+    .rejects.toThrow("An active bet already exists.");
+});
+
+test("falls back to the HTTP status for a non-JSON bet-creation failure", async () => {
+  vi.stubEnv("VITE_CREATE_BET_URL", "https://example.test/bets");
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 500, json: async () => { throw new Error("not JSON"); } }));
+  await expect(createBet({ direction: "up", point: { price: "100", eventTimestamp: "2026-08-20T12:00:00Z" } }))
+    .rejects.toThrow("Bet creation failed (500)");
+});
+
+test.each([403, 404])("treats status %s as an inaccessible bet", async (status) => {
+  vi.stubEnv("VITE_CREATE_BET_URL", "https://example.test/bets/");
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status }));
+  const { BetNotFoundError } = await import("./bets");
+  await expect(getBet("bet with spaces")).rejects.toBeInstanceOf(BetNotFoundError);
+  expect(fetch).toHaveBeenCalledWith("https://example.test/bets/bet%20with%20spaces", expect.any(Object));
+});
+
+test("reports other status failures and rejects malformed successful data", async () => {
+  vi.stubEnv("VITE_CREATE_BET_URL", "https://example.test/bets");
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 503 }));
+  await expect(getBet("bet-1")).rejects.toThrow("could not be loaded (503)");
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ status: "active" }) }));
+  await expect(getBet("bet-1")).rejects.toThrow();
+});
+
+test("requires a configured betting endpoint", async () => {
+  vi.stubEnv("VITE_CREATE_BET_URL", "");
+  await expect(getBet("bet-1")).rejects.toThrow("endpoint is not configured");
+});

@@ -4,6 +4,7 @@
 *.tfplan
 createPlayer.zip
 createBet.zip
+confirmPlayerSignUp.zip
 getPrices.zip
 .terraform-tmp/
 frontend.zip

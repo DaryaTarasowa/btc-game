@@ -33,7 +33,7 @@ const timeFormatter = new Intl.DateTimeFormat(undefined, {
   second: "2-digit",
 });
 
-function toChartData(prices: MarketPrice[]) {
+export function toChartData(prices: MarketPrice[]) {
   const points = new Map<number, MarketPrice>();
 
   for (const price of prices) {

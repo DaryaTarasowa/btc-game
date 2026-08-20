@@ -39,3 +39,14 @@ test("creates an explicit three-minute query window", () => {
     end: "2026-08-19T01:00:00.000000Z",
   });
 });
+
+test("drops malformed stored records without coercing them", () => {
+  assert.deepEqual(toPriceResponse([
+    null,
+    { price: 100, sourceTimestamp: "2026-08-19T01:00:00.000000Z" },
+    { price: "100" },
+    { price: "101", sourceTimestamp: "2026-08-19T01:00:01.000000Z" },
+  ]), {
+    prices: [{ price: "101", eventTimestamp: "2026-08-19T01:00:01.000000Z" }],
+  });
+});
