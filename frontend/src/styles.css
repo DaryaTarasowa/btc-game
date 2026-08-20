@@ -87,7 +87,6 @@ button {
   gap: 14px;
   align-items: center;
   width: 100%;
-  min-width: 0;
   padding: 16px 18px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 14px;
@@ -95,14 +94,25 @@ button {
   background: rgba(8, 11, 18, 0.52);
   text-align: left;
 }
-.history-bet:hover:not(:disabled) { background: rgba(255, 255, 255, 0.07); }
-.history-bet:disabled { cursor: default; opacity: 0.52; }
 .history-bet--selected { border-color: #f7931a; }
 .history-bet__result { font-size: 0.74rem; font-weight: 900; letter-spacing: 0.08em; }
 .history-bet--won .history-bet__result { color: #35d59a; }
 .history-bet--lost .history-bet__result { color: #ff6877; }
 .history-bet small { color: #8490a9; }
-.history-bet__chart { color: #f7931a; font-size: 1.25rem; text-align: center; }
+.history-bet__chart {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  width: 34px;
+  height: 34px;
+  padding: 7px;
+  border-radius: 9px;
+  color: #f7931a;
+  background: rgba(247, 147, 26, 0.12);
+}
+.history-bet__chart:hover { color: #171008; background: #f7931a; }
+.history-bet__chart svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.history-page__older { margin: 18px 0 0; color: #8490a9; font-size: 0.88rem; }
 .history-chart { margin-top: 28px; text-align: left; }
 
 .login-control { display: grid; gap: 10px; margin-bottom: 28px; }

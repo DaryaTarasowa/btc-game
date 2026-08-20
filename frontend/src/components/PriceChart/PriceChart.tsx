@@ -6,14 +6,16 @@ import {
   createChart,
   createSeriesMarkers,
   type IChartApi,
+  type IPriceLine,
   type ISeriesMarkersPluginApi,
   type ISeriesApi,
+  LineStyle,
   type Time,
   type UTCTimestamp,
 } from "lightweight-charts";
-import type { ActiveBet, ResolvedBet } from "../../api/bets";
-import type { MarketPrice } from "../../api/prices";
-import "./PriceChart.css";
+import type { ActiveBet, ResolvedBet } from "@/api/bets";
+import type { MarketPrice } from "@/api/prices";
+import "@/components/PriceChart/PriceChart.css";
 
 interface PriceChartProps {
   prices: MarketPrice[];
@@ -51,12 +53,37 @@ export function toChartData(prices: MarketPrice[]) {
     }));
 }
 
+export function chartHeadlinePrice(
+  prices: MarketPrice[],
+  bet: ActiveBet | ResolvedBet | null | undefined,
+  staticHistory: boolean,
+): string | undefined {
+  if (staticHistory && bet?.status === "resolved") return bet.endPrice;
+  return prices.at(-1)?.price;
+}
+
+export function resolutionPriceLineOptions(
+  bet: ActiveBet | ResolvedBet | null | undefined,
+  staticHistory: boolean,
+) {
+  if (!staticHistory || bet?.status !== "resolved") return null;
+  return {
+    price: Number(bet.endPrice),
+    color: bet.result === "won" ? "#35d59a" : "#ff6877",
+    lineWidth: 1 as const,
+    lineStyle: LineStyle.Dashed,
+    axisLabelVisible: true,
+    title: "Resolved",
+  };
+}
+
 export function PriceChart({ prices, bet, staticHistory = false }: PriceChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Area"> | null>(null);
   const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
+  const resolutionPriceLineRef = useRef<IPriceLine | null>(null);
   const timestampsRef = useRef(new Map<number, string>());
 
   useEffect(() => {
@@ -153,6 +180,7 @@ export function PriceChart({ prices, bet, staticHistory = false }: PriceChartPro
       chartRef.current = null;
       seriesRef.current = null;
       markersRef.current = null;
+      resolutionPriceLineRef.current = null;
     };
   }, []);
 
@@ -192,6 +220,16 @@ export function PriceChart({ prices, bet, staticHistory = false }: PriceChartPro
         : [],
     );
 
+    if (resolutionPriceLineRef.current) {
+      series.removePriceLine(resolutionPriceLineRef.current);
+      resolutionPriceLineRef.current = null;
+    }
+
+    const resolutionLine = resolutionPriceLineOptions(bet, staticHistory);
+    if (resolutionLine) {
+      resolutionPriceLineRef.current = series.createPriceLine(resolutionLine);
+    }
+
     series.applyOptions({
       lineColor: bet
         ? bet.direction === "up" ? "#35d59a" : "#ff6877"
@@ -199,12 +237,14 @@ export function PriceChart({ prices, bet, staticHistory = false }: PriceChartPro
       priceLineColor: bet
         ? bet.direction === "up" ? "#35d59a" : "#ff6877"
         : "#f7931a",
+      priceLineVisible: !resolutionLine,
+      lastValueVisible: !resolutionLine,
     });
 
     chart.timeScale().fitContent();
-  }, [bet, prices]);
+  }, [bet, prices, staticHistory]);
 
-  const latest = prices.at(-1);
+  const headlinePrice = chartHeadlinePrice(prices, bet, staticHistory);
 
   return (
     <section
@@ -226,7 +266,7 @@ export function PriceChart({ prices, bet, staticHistory = false }: PriceChartPro
         <div className="price-chart__latest">
           <span>{staticHistory ? "Resolution price" : "Latest price"}</span>
           <strong>
-            {latest ? priceFormatter.format(Number(latest.price)) : "—"}
+            {headlinePrice ? priceFormatter.format(Number(headlinePrice)) : "—"}
           </strong>
         </div>
       </header>

@@ -1,5 +1,5 @@
 import { events } from "@aws-amplify/api";
-import type { MarketPrice } from "./prices";
+import type { MarketPrice } from "@/api/prices";
 
 const CHANNEL = import.meta.env.VITE_APPSYNC_EVENTS_CHANNEL;
 

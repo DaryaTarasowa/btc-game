@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { usePlayer } from "../../context/usePlayer";
+import { usePlayer } from "@/context/usePlayer";
 
 export function LoginButton() {
   const auth = usePlayer();

@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { isPlayerId } from "./players";
-import type { MarketPrice } from "./prices";
-import { authHeaders } from "./auth";
+import { isPlayerId } from "@/api/players";
+import type { MarketPrice } from "@/api/prices";
+import { authHeaders } from "@/api/auth";
 
 export type BetDirection = "up" | "down";
 
@@ -31,6 +31,7 @@ export type ResolvedBet = z.infer<typeof resolvedBetSchema>;
 export type BetStatus = z.infer<typeof betStatusSchema>;
 const completedBetsSchema = z.object({ bets: z.array(resolvedBetSchema) });
 export const PRICE_HISTORY_RETENTION_MS = 10 * 60 * 60 * 1_000;
+export const BET_CHART_PADDING_MS = 5_000;
 
 export interface CreateBetInput {
   direction: BetDirection;
@@ -87,5 +88,20 @@ export async function getCompletedBets(signal?: AbortSignal): Promise<ResolvedBe
 
 export function canReconstructBet(bet: ResolvedBet, now = Date.now()): boolean {
   const startTime = Date.parse(bet.startEventTimestamp);
-  return Number.isFinite(startTime) && startTime + PRICE_HISTORY_RETENTION_MS > now;
+  return Number.isFinite(startTime) && startTime - BET_CHART_PADDING_MS + PRICE_HISTORY_RETENTION_MS > now;
+}
+
+export function betChartWindow(bet: ResolvedBet): { start: string; end: string } {
+  return {
+    start: new Date(Date.parse(bet.startEventTimestamp) - BET_CHART_PADDING_MS).toISOString(),
+    end: new Date(Date.parse(bet.endEventTimestamp) + BET_CHART_PADDING_MS).toISOString(),
+  };
+}
+
+export function reconstructableBetHistory(
+  bets: ResolvedBet[],
+  now = Date.now(),
+): { bets: ResolvedBet[]; olderCount: number } {
+  const reconstructable = bets.filter((bet) => canReconstructBet(bet, now));
+  return { bets: reconstructable, olderCount: bets.length - reconstructable.length };
 }

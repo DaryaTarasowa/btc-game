@@ -19,7 +19,7 @@ Amazon Cognito provides email/password registration, login, logout, and durable 
 
 The browser stores only the current bet ID as a recovery pointer. DynamoDB remains authoritative: the frontend waits until the bet's earliest resolution timestamp, then checks status and polls once per second only while the backend still reports it active. This avoids roughly 60 unnecessary requests during the first minute of every bet.
 
-The authenticated `/history` page lists the player's completed bets newest first. Bets started less than ten hours ago can be selected to reconstruct their stored market window from DynamoDB; the existing chart renders that static data with creation and resolution markers and does not attach the live-price subscription. Older bets remain visible, but their chart action is disabled because the underlying price-history records have expired.
+The authenticated `/history` page lists only completed bets whose retained market data can still reconstruct a chart, followed by a count of older hidden bets. The chart action loads five seconds before creation through five seconds after resolution from DynamoDB; the existing chart renders that static data with authoritative creation and resolution markers and does not attach the live-price subscription.
 
 ## Repository
 

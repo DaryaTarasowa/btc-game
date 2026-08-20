@@ -1,5 +1,5 @@
 import { Link, Outlet } from "@tanstack/react-router";
-import { usePlayer } from "../context/usePlayer";
+import { usePlayer } from "@/context/usePlayer";
 
 export function AppLayout() {
   const { playerId } = usePlayer();

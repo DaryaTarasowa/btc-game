@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BetNotFoundError, getBet, type ActiveBet, type BetStatus, type ResolvedBet } from "../api/bets";
+import { BetNotFoundError, getBet, type ActiveBet, type BetStatus, type ResolvedBet } from "@/api/bets";
 
 const POINTER_PREFIX = "btc-game.activeBetId.v1";
 export const betStatusQueryKey = (playerId: string, betId: string) => ["bets", playerId, betId] as const;

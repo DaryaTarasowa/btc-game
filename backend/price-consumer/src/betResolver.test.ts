@@ -115,6 +115,19 @@ test("comparison is against start price rather than the previous event", async (
   });
 });
 
+test("an UP bet loses when the exact resolution price is lower even if a later price rises", async () => {
+  const repository = new FakeRepository();
+  const value = await load(repository, bet({ startPrice: "71726.28" }));
+  value.process(event("71724.9", TARGET));
+  value.process(event("71729.76", "2026-08-20T12:01:05.000Z"));
+  await value.stop();
+  assert.deepEqual(repository.resolutions[0]?.resolution, {
+    endPrice: "71724.9",
+    endEventTimestamp: TARGET,
+    result: "lost",
+  });
+});
+
 for (const [direction, endPrice, result] of [
   ["up", "101", "won"],
   ["up", "99", "lost"],

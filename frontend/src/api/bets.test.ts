@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from "vitest";
-import { canReconstructBet, createBet, getBet, getCompletedBets, type ResolvedBet } from "./bets";
+import { betChartWindow, canReconstructBet, createBet, getBet, getCompletedBets, reconstructableBetHistory, type ResolvedBet } from "@/api/bets";
 
 vi.mock("aws-amplify/auth", () => ({
   fetchAuthSession: async () => ({ tokens: { idToken: { toString: () => "test-id-token" } } }),
@@ -97,7 +97,7 @@ test("falls back to the HTTP status for a non-JSON bet-creation failure", async 
 test.each([403, 404])("treats status %s as an inaccessible bet", async (status) => {
   vi.stubEnv("VITE_CREATE_BET_URL", "https://example.test/bets/");
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status }));
-  const { BetNotFoundError } = await import("./bets");
+  const { BetNotFoundError } = await import("@/api/bets");
   await expect(getBet("bet with spaces")).rejects.toBeInstanceOf(BetNotFoundError);
   expect(fetch).toHaveBeenCalledWith("https://example.test/bets/bet%20with%20spaces", expect.any(Object));
 });
@@ -131,6 +131,26 @@ test("loads the authenticated user's completed bets", async () => {
 
 test("reconstruction availability expires ten hours after the bet's source start", () => {
   const bet = { startEventTimestamp: "2026-08-20T02:00:00Z" } as ResolvedBet;
-  expect(canReconstructBet(bet, Date.parse("2026-08-20T11:59:59.999Z"))).toBe(true);
-  expect(canReconstructBet(bet, Date.parse("2026-08-20T12:00:00Z"))).toBe(false);
+  expect(canReconstructBet(bet, Date.parse("2026-08-20T11:59:54.999Z"))).toBe(true);
+  expect(canReconstructBet(bet, Date.parse("2026-08-20T11:59:55Z"))).toBe(false);
+});
+
+test("chart reconstruction includes five seconds around both bet endpoints", () => {
+  const bet = {
+    startEventTimestamp: "2026-08-20T12:00:00.123Z",
+    endEventTimestamp: "2026-08-20T12:01:01.456Z",
+  } as ResolvedBet;
+  expect(betChartWindow(bet)).toEqual({
+    start: "2026-08-20T11:59:55.123Z",
+    end: "2026-08-20T12:01:06.456Z",
+  });
+});
+
+test("history separates reconstructable bets from the older count", () => {
+  const current = { id: "current", startEventTimestamp: "2026-08-20T11:00:00Z" } as ResolvedBet;
+  const old = { id: "old", startEventTimestamp: "2026-08-20T01:00:00Z" } as ResolvedBet;
+  expect(reconstructableBetHistory([current, old], Date.parse("2026-08-20T12:00:00Z"))).toEqual({
+    bets: [current],
+    olderCount: 1,
+  });
 });

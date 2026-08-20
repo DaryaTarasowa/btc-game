@@ -14,7 +14,7 @@ test("forwards live events and closes every subscription resource", async () => 
     subscribe: vi.fn((value) => { observer = value; return { unsubscribe }; }),
     close,
   });
-  const { subscribeToLivePrices } = await import("./livePrices");
+  const { subscribeToLivePrices } = await import("@/api/livePrices");
   const onPrice = vi.fn();
   const cleanup = await subscribeToLivePrices(onPrice);
   const price = { price: "100", eventTimestamp: "2026-08-20T12:00:00Z" };

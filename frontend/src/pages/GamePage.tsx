@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { GameControls } from "../components/GameControls/GameControls";
-import { LoginButton } from "../components/LoginButton/LoginButton";
-import { PriceChart } from "../components/PriceChart/PriceChart";
-import { usePlayer } from "../context/usePlayer";
-import { useLivePrices, useRecentPrices } from "../queries/useRecentPrices";
-import { useCreateBet } from "../queries/useCreateBet";
-import { useBetSynchronization } from "../queries/useBetSynchronization";
-import { usePlayerScore } from "../queries/usePlayerScore";
+import { GameControls } from "@/components/GameControls/GameControls";
+import { LoginButton } from "@/components/LoginButton/LoginButton";
+import { PriceChart } from "@/components/PriceChart/PriceChart";
+import { usePlayer } from "@/context/usePlayer";
+import { useLivePrices, useRecentPrices } from "@/queries/useRecentPrices";
+import { useCreateBet } from "@/queries/useCreateBet";
+import { useBetSynchronization } from "@/queries/useBetSynchronization";
+import { usePlayerScore } from "@/queries/usePlayerScore";
 
 function useBetCountdown(targetTimestamp?: string) {
   const [, redraw] = useState(0);
