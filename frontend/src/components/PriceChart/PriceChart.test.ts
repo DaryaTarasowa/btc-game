@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { chartHeadlinePrice, resolutionPriceLineOptions, toChartData } from "@/components/PriceChart/PriceChart";
+import { betGraphColor, betGuideColors, chartHeadlinePrice, referencePriceLineOptions, staticGraphFillColors, toChartData } from "@/components/PriceChart/PriceChart";
 import type { ResolvedBet } from "@/api/bets";
 
 test("sorts chart data and keeps the latest point within each whole second", () => {
@@ -22,6 +22,20 @@ test("does not mutate the history returned by the API", () => {
   expect(prices[0]?.price).toBe("2");
 });
 
+test("static chart keeps an authoritative resolution event over a later sample in the same second", () => {
+  const resolutionTimestamp = "2026-08-20T12:01:00.100Z";
+  expect(toChartData([
+    { price: "101", eventTimestamp: resolutionTimestamp },
+    { price: "99", eventTimestamp: "2026-08-20T12:01:00.900Z" },
+  ], [resolutionTimestamp])).toEqual([
+    {
+      time: Date.parse("2026-08-20T12:01:00Z") / 1_000,
+      value: 101,
+      eventTimestamp: resolutionTimestamp,
+    },
+  ]);
+});
+
 test("static history headlines the authoritative resolution price, not a later chart point", () => {
   const prices = [{ price: "71729.76", eventTimestamp: "2026-08-20T12:01:05Z" }];
   const bet = { status: "resolved", endPrice: "71724.9" } as ResolvedBet;
@@ -32,13 +46,28 @@ test("static history headlines the authoritative resolution price, not a later c
 test.each([
   ["won", "#35d59a"],
   ["lost", "#ff6877"],
-] as const)("static %s bets draw the horizontal line at the resolution price", (result, color) => {
-  const bet = { status: "resolved", result, endPrice: "71724.9" } as ResolvedBet;
-  expect(resolutionPriceLineOptions(bet, true)).toMatchObject({
-    price: 71724.9,
-    color,
-    axisLabelVisible: true,
-    title: "Resolved",
+] as const)("static %s bets draw both horizontal references in the result color", (result, color) => {
+  const bet = { status: "resolved", result, startPrice: "71720.1", endPrice: "71724.9" } as ResolvedBet;
+  expect(referencePriceLineOptions(bet, true)).toEqual([
+    expect.objectContaining({ price: 71720.1, color, axisLabelVisible: true, title: "Placed" }),
+    expect.objectContaining({ price: 71724.9, color, axisLabelVisible: true, title: "Resolved" }),
+  ]);
+  expect(referencePriceLineOptions(bet, false)).toEqual([]);
+});
+
+test("lost static annotations are red while an UP graph remains green", () => {
+  const bet = { direction: "up", status: "resolved", result: "lost" } as ResolvedBet;
+  expect(betGraphColor(bet)).toBe("#35d59a");
+  expect(betGuideColors({ direction: "up", status: "resolved", result: "lost" } as ResolvedBet)).toEqual({
+    creation: "#ff6877",
+    resolution: "#ff6877",
   });
-  expect(resolutionPriceLineOptions(bet, false)).toBeNull();
+  expect(staticGraphFillColors(bet).top).toContain("53, 213, 154");
+});
+
+test("won static annotations are green while a DOWN graph remains red", () => {
+  const bet = { direction: "down", status: "resolved", result: "won" } as ResolvedBet;
+  expect(betGraphColor(bet)).toBe("#ff6877");
+  expect(betGuideColors(bet)).toEqual({ creation: "#35d59a", resolution: "#35d59a" });
+  expect(staticGraphFillColors(bet).top).toContain("255, 104, 119");
 });

@@ -106,20 +106,22 @@ export class BetResolver {
     return operation;
   }
 
-  public process(event: MarketPriceEventData): void {
-    if (this.stopping) return;
+  public process(event: MarketPriceEventData): boolean {
+    if (this.stopping) return false;
     this.latestMarketEventMs = Math.max(
       this.latestMarketEventMs ?? 0,
       Date.parse(event.eventTimestamp),
     );
     const eventTime = toEpochNanoseconds(event.eventTimestamp);
+    let resolutionScheduled = false;
 
     for (const bet of this.workingSet.values()) {
       if (eventTime < toEpochNanoseconds(bet.resolutionTargetTimestamp)) continue;
       const comparison = compareDecimal(event.price, bet.startPrice);
       if (comparison === 0) continue;
 
-      const resolution: BetResolution = this.candidates.get(bet.id) ?? {
+      const existingResolution = this.candidates.get(bet.id);
+      const resolution: BetResolution = existingResolution ?? {
         endPrice: event.price,
         endEventTimestamp: event.eventTimestamp,
         result:
@@ -128,8 +130,11 @@ export class BetResolver {
             : comparison < 0 ? "won" : "lost",
       };
       this.candidates.set(bet.id, resolution);
-      this.scheduleResolution(bet, resolution);
+      const scheduled = this.scheduleResolution(bet, resolution);
+      if (!existingResolution && scheduled) resolutionScheduled = true;
     }
+
+    return resolutionScheduled;
   }
 
   public async stop(): Promise<void> {
@@ -139,8 +144,8 @@ export class BetResolver {
     await Promise.all(this.pending);
   }
 
-  private scheduleResolution(bet: ActiveBet, resolution: BetResolution): void {
-    if (this.resolving.has(bet.id) || this.stopping) return;
+  private scheduleResolution(bet: ActiveBet, resolution: BetResolution): boolean {
+    if (this.resolving.has(bet.id) || this.stopping) return false;
     this.resolving.add(bet.id);
     const operation = this.repository
       .resolveBetConditionally(bet, resolution)
@@ -166,5 +171,6 @@ export class BetResolver {
         this.pending.delete(operation);
       });
     this.pending.add(operation);
+    return true;
   }
 }

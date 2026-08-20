@@ -70,6 +70,32 @@ test("skips an event less than one second after the last stored event", async ()
   assert.equal(repository.writes.length, 0);
 });
 
+test("force-stores a resolution event inside the normal sampling interval", async () => {
+  const repository = new FakeRepository("2026-08-18T18:30:12.100Z");
+  const writer = await PriceHistoryWriter.create({
+    product: "BTC-USD",
+    repository,
+  });
+
+  assert.equal(
+    await writer.process(makeMarketPrice("2026-08-18T18:30:12.500Z"), true),
+    "stored",
+  );
+  assert.deepEqual(
+    repository.writes.map((point) => point.eventTimestamp),
+    ["2026-08-18T18:30:12.500Z"],
+  );
+
+  assert.equal(
+    await writer.process(makeMarketPrice("2026-08-18T18:30:13.100Z")),
+    "stored",
+  );
+  assert.deepEqual(
+    repository.writes.map((point) => point.eventTimestamp),
+    ["2026-08-18T18:30:12.500Z", "2026-08-18T18:30:13.100Z"],
+  );
+});
+
 test("stores an event exactly one second after the last stored event", async () => {
   const repository = new FakeRepository("2026-08-18T18:30:12.100Z");
   const writer = await PriceHistoryWriter.create({

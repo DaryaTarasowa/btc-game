@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { betChartWindow, getCompletedBets, reconstructableBetHistory } from "@/api/bets";
-import { getRecentPrices } from "@/api/prices";
+import { getCompletedBets, reconstructableBetHistory } from "@/api/bets";
 import { PriceChart } from "@/components/PriceChart/PriceChart";
 import { usePlayer } from "@/context/usePlayer";
+import { useResolvedBetChart } from "@/queries/useResolvedBetChart";
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, {
   dateStyle: "medium",
@@ -21,11 +21,7 @@ export function HistoryPage() {
   });
   const visibleHistory = reconstructableBetHistory(history.data ?? []);
   const selectedBet = visibleHistory.bets.find((bet) => bet.id === selectedBetId) ?? null;
-  const historicalPrices = useQuery({
-    queryKey: ["prices", "bet", selectedBet?.id],
-    queryFn: ({ signal }) => getRecentPrices({ ...betChartWindow(selectedBet!), signal }),
-    enabled: Boolean(selectedBet),
-  });
+  const historicalPrices = useResolvedBetChart(selectedBet);
 
   return (
     <section className="history-page">
