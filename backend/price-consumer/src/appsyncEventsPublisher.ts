@@ -8,8 +8,20 @@ const CHANNEL = "/prices/BTC-USD";
 const SERVICE = "appsync";
 const REGION = "eu-central-1";
 
+type RequestSigner = Pick<SignatureV4, "sign">;
+type Fetcher = typeof fetch;
+
 export class AppsyncEventsPublisher implements PricePublisher {
-  public constructor(private readonly endpoint: string) {}
+  public constructor(
+    private readonly endpoint: string,
+    private readonly signer: RequestSigner = new SignatureV4({
+      credentials: fromNodeProviderChain(),
+      region: REGION,
+      service: SERVICE,
+      sha256: Sha256,
+    }),
+    private readonly fetcher: Fetcher = fetch,
+  ) {}
 
   public async publish(marketPrice: LiveMarketPrice): Promise<void> {
     const url = new URL(this.endpoint);
@@ -17,13 +29,6 @@ export class AppsyncEventsPublisher implements PricePublisher {
     const body = JSON.stringify({
       channel: CHANNEL,
       events: [JSON.stringify(marketPrice)],
-    });
-
-    const signer = new SignatureV4({
-      credentials: fromNodeProviderChain(),
-      region: REGION,
-      service: SERVICE,
-      sha256: Sha256,
     });
 
     const request = new HttpRequest({
@@ -37,9 +42,9 @@ export class AppsyncEventsPublisher implements PricePublisher {
       body,
     });
 
-    const signedRequest = await signer.sign(request);
+    const signedRequest = await this.signer.sign(request);
 
-    const response = await fetch(this.endpoint, {
+    const response = await this.fetcher(this.endpoint, {
       method: signedRequest.method,
       headers: signedRequest.headers,
       body: signedRequest.body,

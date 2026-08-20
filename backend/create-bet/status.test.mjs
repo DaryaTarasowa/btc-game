@@ -12,3 +12,10 @@ test("status lookup is restricted to the authenticated player's partition", () =
 test("status lookup rejects malformed bet IDs", () => {
   assert.equal(betStatusQuery("authenticated-player", "../other-player"), null);
 });
+
+test("status lookup accepts boundary-safe IDs and rejects empty or oversized IDs", () => {
+  assert.ok(betStatusQuery("authenticated-player", "A".repeat(128)));
+  assert.equal(betStatusQuery("authenticated-player", ""), null);
+  assert.equal(betStatusQuery("authenticated-player", "A".repeat(129)), null);
+  assert.equal(betStatusQuery("authenticated-player", "contains_underscore"), null);
+});

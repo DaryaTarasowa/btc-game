@@ -9,6 +9,17 @@ import type { MarketPrice } from "../api/prices";
 
 const recentPricesQueryKey = ["prices", "recent"] as const;
 
+export function appendRecentPrice(
+  current: MarketPrice[],
+  price: MarketPrice,
+  now = Date.now(),
+): MarketPrice[] {
+  const cutoff = now - 3 * 60_000;
+  return [...current, price].filter(
+    (item) => Date.parse(item.eventTimestamp) >= cutoff,
+  );
+}
+
 export function useRecentPrices() {
   return useQuery({
     queryKey: recentPricesQueryKey,
@@ -25,13 +36,7 @@ export function useLivePrices() {
     void subscribeToLivePrices((price) => {
       queryClient.setQueryData<MarketPrice[]>(
         recentPricesQueryKey,
-        (current = []) => {
-          const cutoff = Date.now() - 3 * 60_000;
-
-          return [...current, price].filter(
-            (item) => Date.parse(item.eventTimestamp) >= cutoff,
-          );
-        },
+        (current = []) => appendRecentPrice(current, price),
       );
     }).then((cleanup) => {
       unsubscribe = cleanup;

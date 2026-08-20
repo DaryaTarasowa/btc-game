@@ -38,3 +38,24 @@ test("localStorage contains only the bet ID pointer and is cleared on resolution
   clearBetPointer("player-1");
   expect(readBetPointer("player-1")).toBeNull();
 });
+
+test("rejects malformed stored pointers and removes the legacy full-bet cache", () => {
+  const values = new Map([
+    ["btc-game.activeBetId.v1.player-1", "../another-player"],
+    ["btc-game.activeBet.v1.player-1", JSON.stringify({ id: "legacy" })],
+  ]);
+  vi.stubGlobal("localStorage", {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => values.set(key, value),
+    removeItem: (key: string) => values.delete(key),
+  });
+  expect(readBetPointer("player-1")).toBeNull();
+  expect(values.has("btc-game.activeBet.v1.player-1")).toBe(false);
+  expect(readBetPointer(null)).toBeNull();
+});
+
+test("caps elapsed targets at zero and keeps resolved data indefinitely fresh", () => {
+  expect(millisecondsUntilTarget(active, Date.parse("2026-08-20T12:02:00.000Z"))).toBe(0);
+  expect(statusStaleTime({ status: "resolved" } as ResolvedBet)).toBe(Infinity);
+  expect(statusStaleTime(undefined)).toBe(Infinity);
+});

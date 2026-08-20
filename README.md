@@ -312,6 +312,28 @@ aws dynamodb query --table-name btc-game-price-history --key-condition-expressio
 
 The ECS service should report one running task, logs should contain `coinbase_connected`, and the DynamoDB query should return a recent real Coinbase point.
 
+## Testing
+
+Run the backend Lambda characterization tests from the repository root:
+
+```powershell
+node --test backend/create-bet/*.test.mjs backend/create-player/*.test.mjs backend/get-prices/*.test.mjs backend/confirm-player-sign-up/*.test.mjs
+```
+
+Run the frontend and price-consumer suites independently:
+
+```powershell
+pnpm --dir frontend test
+pnpm --dir backend/price-consumer test
+```
+
+Both TypeScript applications are also checked by their production builds:
+
+```powershell
+pnpm --dir frontend build
+pnpm --dir backend/price-consumer build
+```
+
 ## Safety
 
 - Always review the Terraform plan before applying it.

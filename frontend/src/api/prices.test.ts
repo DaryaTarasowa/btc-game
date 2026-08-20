@@ -1,5 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { parsePriceResponse } from "./prices";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { getRecentPrices, parsePriceResponse } from "./prices";
+
+afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
 describe("parsePriceResponse", () => {
   it("parses valid price data without reordering the API response", () => {
@@ -41,5 +43,27 @@ describe("parsePriceResponse", () => {
         prices: [{ price: "64472.46", sourceTimestamp: "2026-08-19T00:59:20Z" }],
       }),
     ).toThrow();
+  });
+});
+
+describe("getRecentPrices", () => {
+  it("loads and validates price history", async () => {
+    vi.stubEnv("VITE_GET_PRICES_URL", "https://example.test/prices");
+    const prices = [{ price: "100.25", eventTimestamp: "2026-08-20T12:00:00Z" }];
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ prices }) });
+    vi.stubGlobal("fetch", fetchMock);
+    const controller = new AbortController();
+    await expect(getRecentPrices({ signal: controller.signal })).resolves.toEqual(prices);
+    expect(fetchMock).toHaveBeenCalledWith("https://example.test/prices", { signal: controller.signal });
+  });
+
+  it("reports configuration, HTTP, and malformed-response failures", async () => {
+    vi.stubEnv("VITE_GET_PRICES_URL", "");
+    await expect(getRecentPrices()).rejects.toThrow("endpoint is not configured");
+    vi.stubEnv("VITE_GET_PRICES_URL", "https://example.test/prices");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 502 }));
+    await expect(getRecentPrices()).rejects.toThrow("could not be loaded (502)");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ prices: [{ price: "bad" }] }) }));
+    await expect(getRecentPrices()).rejects.toThrow("malformed price history");
   });
 });
