@@ -5,9 +5,8 @@ import { QueryCommand, TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
 import { BetRepository, type ActiveBet } from "./betRepository.js";
 
 const activeBet: ActiveBet = {
-  id: "bet-1",
+  betId: "bet-1",
   playerId: "player-1",
-  recordKey: "ACTIVE",
   direction: "up",
   status: "active",
   startPrice: "100",
@@ -35,7 +34,7 @@ test("queries active bets through the resolution-target GSI", async () => {
   assert.match(commands[0].input.KeyConditionExpression ?? "", /<= :upperBound/);
 });
 
-test("atomically moves an active bet to resolved history", async () => {
+test("atomically resolves the stable bet item and updates its player", async () => {
   let command: unknown;
   const client = {
     send: async (value: unknown) => {
@@ -54,23 +53,27 @@ test("atomically moves an active bet to resolved history", async () => {
     "resolved",
   );
   assert.ok(command instanceof TransactWriteCommand);
-  const [deletion, history, scoreUpdate] = command.input.TransactItems ?? [];
-  assert.equal(deletion?.Delete?.ConditionExpression, "#status = :active AND #id = :id");
-  assert.deepEqual(history?.Put?.Item, {
-    ...activeBet,
-    recordKey: `BET#${activeBet.startEventTimestamp}#${activeBet.id}`,
-    status: "resolved",
-    endPrice: "101",
-    endEventTimestamp: "2026-08-20T12:01:00.100Z",
-    result: "won",
+  const [betUpdate, scoreUpdate] = command.input.TransactItems ?? [];
+  assert.deepEqual(betUpdate?.Update?.Key, {
+    playerId: activeBet.playerId,
+    betId: activeBet.betId,
+  });
+  assert.equal(betUpdate?.Update?.ConditionExpression, "#status = :active");
+  assert.match(betUpdate?.Update?.UpdateExpression ?? "", /#status = :resolved/);
+  assert.deepEqual(betUpdate?.Update?.ExpressionAttributeValues, {
+    ":active": "active",
+    ":resolved": "resolved",
+    ":endPrice": "101",
+    ":endEventTimestamp": "2026-08-20T12:01:00.100Z",
+    ":result": "won",
   });
   assert.deepEqual(scoreUpdate?.Update, {
     TableName: "btc-game-players",
     Key: { playerId: activeBet.playerId },
-    UpdateExpression: "ADD #score :scoreChange",
-    ConditionExpression: "attribute_exists(playerId)",
+    UpdateExpression: "REMOVE activeBetId ADD #score :scoreChange",
+    ConditionExpression: "activeBetId = :id",
     ExpressionAttributeNames: { "#score": "score" },
-    ExpressionAttributeValues: { ":scoreChange": 1 },
+    ExpressionAttributeValues: { ":id": activeBet.betId, ":scoreChange": 1 },
   });
 });
 
@@ -92,8 +95,8 @@ test("a loss subtracts one point in the resolution transaction", async () => {
 
   assert.ok(command instanceof TransactWriteCommand);
   assert.deepEqual(
-    command.input.TransactItems?.[2]?.Update?.ExpressionAttributeValues,
-    { ":scoreChange": -1 },
+    command.input.TransactItems?.[1]?.Update?.ExpressionAttributeValues,
+    { ":id": activeBet.betId, ":scoreChange": -1 },
   );
 });
 
@@ -105,6 +108,32 @@ test("a failed active condition is treated as already resolved", async () => {
       };
       error.name = "TransactionCanceledException";
       error.CancellationReasons = [{ Code: "ConditionalCheckFailed" }];
+      throw error;
+    },
+  } as unknown as DynamoDBDocumentClient;
+  const repository = new BetRepository("btc-game-bets", "btc-game-players", client);
+
+  assert.equal(
+    await repository.resolveBetConditionally(activeBet, {
+      endPrice: "101",
+      endEventTimestamp: "2026-08-20T12:01:00.100Z",
+      result: "won",
+    }),
+    "already_resolved",
+  );
+});
+
+test("a stale player activeBetId is treated as an already completed resolution", async () => {
+  const client = {
+    send: async () => {
+      const error = new Error("cancelled") as Error & {
+        CancellationReasons: Array<{ Code: string }>;
+      };
+      error.name = "TransactionCanceledException";
+      error.CancellationReasons = [
+        { Code: "None" },
+        { Code: "ConditionalCheckFailed" },
+      ];
       throw error;
     },
   } as unknown as DynamoDBDocumentClient;

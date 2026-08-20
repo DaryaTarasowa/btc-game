@@ -1,5 +1,4 @@
 const PRODUCT = "BTC-USD";
-const ACTIVE_RECORD_KEY = "ACTIVE";
 const PLAYER_ID_PATTERN = /^[A-Za-z0-9._:@-]{1,128}$/;
 const POSITIVE_DECIMAL_PATTERN = /^(?:0*[1-9]\d*)(?:\.\d+)?$|^0*\.\d*[1-9]\d*$/;
 const TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.(\d+))?(?:Z|[+-]\d{2}:\d{2})$/;
@@ -48,6 +47,29 @@ export function addSixtySeconds(timestamp) {
   return match[1] ? `${wholeSeconds}.${match[1]}Z` : `${wholeSeconds}Z`;
 }
 
+export function createBetTransaction(bet, betsTable, playersTable) {
+  return {
+    TransactItems: [
+      {
+        Put: {
+          TableName: betsTable,
+          Item: bet,
+          ConditionExpression: "attribute_not_exists(playerId) AND attribute_not_exists(betId)",
+        },
+      },
+      {
+        Update: {
+          TableName: playersTable,
+          Key: { playerId: bet.playerId },
+          UpdateExpression: "SET activeBetId = :betId",
+          ConditionExpression: "attribute_exists(playerId) AND attribute_not_exists(activeBetId)",
+          ExpressionAttributeValues: { ":betId": bet.betId },
+        },
+      },
+    ],
+  };
+}
+
 export async function createBet(request, dependencies) {
   const input = validateCreateBetRequest(request);
   const historyPoint = await dependencies.getHistoryPoint(
@@ -62,10 +84,10 @@ export async function createBet(request, dependencies) {
     throw new BetCreationError("history_price_mismatch", 409, "The submitted price does not match the stored history point.");
   }
 
+  const betId = dependencies.createId();
   const bet = {
-    id: dependencies.createId(),
+    betId,
     playerId: input.playerId,
-    recordKey: ACTIVE_RECORD_KEY,
     direction: input.direction,
     status: "active",
     startPrice: input.startPrice,
@@ -73,9 +95,8 @@ export async function createBet(request, dependencies) {
     resolutionTargetTimestamp: addSixtySeconds(input.startEventTimestamp),
     createdAt: dependencies.now().toISOString(),
   };
-
   try {
-    await dependencies.putActiveBet(bet);
+    await dependencies.transactCreateBet(bet);
   } catch (error) {
     if (dependencies.isDuplicateError(error)) {
       throw new BetCreationError("active_bet_exists", 409, "The player already has an active bet.");

@@ -20,7 +20,7 @@ export function HistoryPage() {
     enabled: Boolean(playerId),
   });
   const visibleHistory = reconstructableBetHistory(history.data ?? []);
-  const selectedBet = visibleHistory.bets.find((bet) => bet.id === selectedBetId) ?? null;
+  const selectedBet = visibleHistory.bets.find((bet) => bet.betId === selectedBetId) ?? null;
   const historicalPrices = useResolvedBetChart(selectedBet);
   const emptyClass = "mt-10 text-[#8490a9]";
 
@@ -43,8 +43,8 @@ export function HistoryPage() {
                 <div className="mt-8 grid gap-2.5">
                   {visibleHistory.bets.map((bet) => (
                     <div
-                      className={`relative grid w-full grid-cols-[100px_1fr_auto_28px] items-center gap-3.5 rounded-[14px] border bg-[#080b12]/50 px-4.5 py-4 text-left text-slate-200 max-[820px]:grid-cols-[80px_1fr_24px] ${selectedBetId === bet.id ? "border-bitcoin" : "border-white/10"}`}
-                      key={bet.id}
+                      className={`relative grid w-full grid-cols-[100px_1fr_auto_28px] items-center gap-3.5 rounded-[14px] border bg-[#080b12]/50 px-4.5 py-4 text-left text-slate-200 max-[820px]:grid-cols-[80px_1fr_24px] ${selectedBetId === bet.betId ? "border-bitcoin" : "border-white/10"}`}
+                      key={bet.betId}
                     >
                       <span className={`text-xs font-black tracking-[0.08em] ${bet.result === "won" ? "text-up" : "text-down"}`}>{bet.result === "won" ? "+1 WON" : "−1 LOST"}</span>
                       <strong>{bet.direction.toUpperCase()} · ${Number(bet.startPrice).toLocaleString()}</strong>
@@ -54,7 +54,7 @@ export function HistoryPage() {
                         className="grid size-[34px] min-w-0 cursor-pointer place-items-center rounded-[9px] border-0 bg-bitcoin/10 p-[7px] text-bitcoin transition hover:bg-bitcoin hover:text-[#171008] focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-white max-[820px]:col-start-3 max-[820px]:row-start-1"
                         aria-label="Show price chart"
                         title="Show price chart"
-                        onClick={() => setSelectedBetId(bet.id)}
+                        onClick={() => setSelectedBetId(bet.betId)}
                       >
                         <svg className="size-full fill-none stroke-current stroke-2 [stroke-linecap:round] [stroke-linejoin:round]" viewBox="0 0 24 24" aria-hidden="true">
                           <path d="M4 19V5M4 19h16M7 15l3-4 3 2 5-7" />

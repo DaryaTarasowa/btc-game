@@ -1,12 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
-import { BetCreationError, createBet } from "./bets.mjs";
-import { betStatusQuery, resolvedBetsQuery } from "./status.mjs";
+import { DynamoDBDocumentClient, GetCommand, QueryCommand, TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
+import { BetCreationError, createBet, createBetTransaction } from "./bets.mjs";
+import { betStatusKey, resolvedBetsQuery, sortResolvedBets } from "./status.mjs";
 
 const dynamodb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const priceHistoryTable = process.env.PRICE_HISTORY_TABLE;
 const betsTable = process.env.BETS_TABLE;
+const playersTable = process.env.PLAYERS_TABLE;
 
 const json = (statusCode, body) => ({
   statusCode,
@@ -31,17 +32,12 @@ export const handler = async (event) => {
         bets.push(...(result.Items ?? []));
         cursor = result.LastEvaluatedKey;
       } while (cursor);
-      return json(200, { bets });
+      return json(200, { bets: sortResolvedBets(bets) });
     }
-    const query = betStatusQuery(playerId, betId);
-    if (!query) return json(400, { error: "invalid_bet_id" });
-    let cursor;
-    do {
-      const result = await dynamodb.send(new QueryCommand({ TableName: betsTable, ...query, ExclusiveStartKey: cursor }));
-      if (result.Items?.[0]) return json(200, result.Items[0]);
-      cursor = result.LastEvaluatedKey;
-    } while (cursor);
-    return json(404, { error: "bet_not_found" });
+    const key = betStatusKey(playerId, betId);
+    if (!key) return json(400, { error: "invalid_bet_id" });
+    const result = await dynamodb.send(new GetCommand({ TableName: betsTable, Key: key, ConsistentRead: true }));
+    return result.Item ? json(200, result.Item) : json(404, { error: "bet_not_found" });
   }
   let request;
   try {
@@ -64,14 +60,10 @@ export const handler = async (event) => {
         }));
         return result.Item;
       },
-      async putActiveBet(betToStore) {
-        await dynamodb.send(new PutCommand({
-          TableName: betsTable,
-          Item: betToStore,
-          ConditionExpression: "attribute_not_exists(playerId)",
-        }));
+      async transactCreateBet(betToStore) {
+        await dynamodb.send(new TransactWriteCommand(createBetTransaction(betToStore, betsTable, playersTable)));
       },
-      isDuplicateError: (error) => error?.name === "ConditionalCheckFailedException",
+      isDuplicateError: (error) => error?.name === "TransactionCanceledException",
     });
     return json(201, bet);
   } catch (error) {

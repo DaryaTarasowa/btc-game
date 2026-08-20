@@ -1,22 +1,21 @@
-export function betStatusQuery(playerId, betId) {
+export function betStatusKey(playerId, betId) {
   if (typeof betId !== "string" || !/^[A-Za-z0-9-]{1,128}$/.test(betId)) return null;
-  return {
-    KeyConditionExpression: "playerId = :playerId",
-    FilterExpression: "#id = :betId",
-    ExpressionAttributeNames: { "#id": "id" },
-    ExpressionAttributeValues: { ":playerId": playerId, ":betId": betId },
-    ConsistentRead: true,
-  };
+  return { playerId, betId };
 }
 
 export function resolvedBetsQuery(playerId) {
   return {
-    KeyConditionExpression: "playerId = :playerId AND begins_with(recordKey, :resolvedPrefix)",
+    KeyConditionExpression: "playerId = :playerId",
+    FilterExpression: "#status = :resolved",
+    ExpressionAttributeNames: { "#status": "status" },
     ExpressionAttributeValues: {
       ":playerId": playerId,
-      ":resolvedPrefix": "BET#",
+      ":resolved": "resolved",
     },
-    ScanIndexForward: false,
     ConsistentRead: true,
   };
+}
+
+export function sortResolvedBets(bets) {
+  return [...bets].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
 }

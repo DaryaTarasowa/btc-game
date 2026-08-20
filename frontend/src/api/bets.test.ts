@@ -13,9 +13,8 @@ afterEach(() => {
 test("loads authoritative resolved status using only the bet ID", async () => {
   vi.stubEnv("VITE_CREATE_BET_URL", "https://example.test/bets");
   const resolved = {
-    id: "bet-id",
+    betId: "bet-id",
     playerId: "550e8400-e29b-41d4-a716-446655440000",
-    recordKey: "BET#2026-08-20T12:34:56.123456Z#bet-id",
     direction: "up",
     status: "resolved",
     result: "won",
@@ -35,9 +34,8 @@ test("loads authoritative resolved status using only the bet ID", async () => {
 test("sends the exact visible price and event timestamp", async () => {
   vi.stubEnv("VITE_CREATE_BET_URL", "https://example.test/bets");
   const response = {
-    id: "bet-id",
+    betId: "bet-id",
     playerId: "550e8400-e29b-41d4-a716-446655440000",
-    recordKey: "ACTIVE",
     direction: "up",
     status: "active",
     startPrice: "113245.37",
@@ -118,7 +116,7 @@ test("requires a configured betting endpoint", async () => {
 test("loads the authenticated user's completed bets", async () => {
   vi.stubEnv("VITE_CREATE_BET_URL", "https://example.test/bets/");
   const bet = {
-    id: "bet-id", playerId: "subject-1", recordKey: "BET#record", direction: "up", status: "resolved",
+    betId: "bet-id", playerId: "subject-1", direction: "up", status: "resolved",
     result: "won", startPrice: "100", endPrice: "101", startEventTimestamp: "2026-08-20T12:00:00Z",
     resolutionTargetTimestamp: "2026-08-20T12:01:00Z", endEventTimestamp: "2026-08-20T12:01:01Z",
     createdAt: "2026-08-20T12:00:01Z",
@@ -147,8 +145,8 @@ test("chart reconstruction includes five seconds around both bet endpoints", () 
 });
 
 test("history separates reconstructable bets from the older count", () => {
-  const current = { id: "current", startEventTimestamp: "2026-08-20T11:00:00Z" } as ResolvedBet;
-  const old = { id: "old", startEventTimestamp: "2026-08-20T01:00:00Z" } as ResolvedBet;
+  const current = { betId: "current", startEventTimestamp: "2026-08-20T11:00:00Z" } as ResolvedBet;
+  const old = { betId: "old", startEventTimestamp: "2026-08-20T01:00:00Z" } as ResolvedBet;
   expect(reconstructableBetHistory([current, old], Date.parse("2026-08-20T12:00:00Z"))).toEqual({
     bets: [current],
     olderCount: 1,

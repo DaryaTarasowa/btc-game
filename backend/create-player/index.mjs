@@ -19,7 +19,7 @@ async function deleteBets(playerId) {
       TableName: betsTable,
       KeyConditionExpression: "playerId = :playerId",
       ExpressionAttributeValues: { ":playerId": playerId },
-      ProjectionExpression: "playerId, recordKey",
+      ProjectionExpression: "playerId, betId",
       ExclusiveStartKey: cursor,
       ConsistentRead: true,
     }));

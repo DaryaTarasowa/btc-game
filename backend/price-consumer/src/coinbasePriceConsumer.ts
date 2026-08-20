@@ -136,6 +136,11 @@ export class CoinbasePriceConsumer {
     this.onPriceUpdate(marketPriceEventData);
   }
 
+  /**
+   * Restarts the watchdog timer for the current Coinbase connection.
+   * If no new activity resets it within the timeout, the connection is
+   * considered stale and terminated so it can be reconnected.
+   */
   private resetWatchdog(socket: WebSocket): void {
     this.clearWatchdog();
     this.watchdogTimer = setTimeout(() => {

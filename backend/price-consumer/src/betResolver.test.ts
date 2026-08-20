@@ -13,9 +13,8 @@ const TARGET = "2026-08-20T12:01:00.000Z";
 
 function bet(overrides: Partial<ActiveBet> = {}): ActiveBet {
   return {
-    id: "bet-1",
+    betId: "bet-1",
     playerId: "player-1",
-    recordKey: "ACTIVE",
     direction: "up",
     status: "active",
     startPrice: "100",

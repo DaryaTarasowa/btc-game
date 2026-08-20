@@ -30,7 +30,7 @@ export function GamePage() {
   const prices = recentPrices.data ?? [];
   const latestVisiblePoint = prices.at(-1);
   const { activeBet, resolvedBet, isRecovering, trackCreatedBet } =
-    useBetSynchronization(playerId);
+    useBetSynchronization(playerId, player?.activeBetId);
   const createBet = useCreateBet(trackCreatedBet);
   const secondsRemaining = useBetCountdown(
     activeBet?.resolutionTargetTimestamp,
@@ -46,7 +46,7 @@ export function GamePage() {
   const [modalOrigin, setModalOrigin] = useState({ x: 0, y: 0 });
   const score = playerScore.data?.score;
   const modalOpen = Boolean(
-    resolvedBet && openResolvedBetId === resolvedBet.id,
+    resolvedBet && openResolvedBetId === resolvedBet.betId,
   );
   const eyebrowClass =
     "mb-3 text-xs font-extrabold tracking-[0.22em] text-bitcoin";
@@ -78,7 +78,7 @@ export function GamePage() {
           }
         : { x: 0, y: 0 },
     );
-    setOpenResolvedBetId(resolvedBet.id);
+    setOpenResolvedBetId(resolvedBet.betId);
   }, [resolvedBet]);
 
   useEffect(() => {

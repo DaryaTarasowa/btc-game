@@ -1,33 +1,40 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { betStatusQuery, resolvedBetsQuery } from "./status.mjs";
+import { betStatusKey, resolvedBetsQuery, sortResolvedBets } from "./status.mjs";
 
 test("status lookup is restricted to the authenticated player's partition", () => {
-  const query = betStatusQuery("authenticated-player", "bet-1");
-  assert.equal(query.ExpressionAttributeValues[":playerId"], "authenticated-player");
-  assert.equal(query.ExpressionAttributeValues[":betId"], "bet-1");
-  assert.equal(query.KeyConditionExpression, "playerId = :playerId");
+  assert.deepEqual(betStatusKey("authenticated-player", "bet-1"), {
+    playerId: "authenticated-player",
+    betId: "bet-1",
+  });
 });
 
 test("status lookup rejects malformed bet IDs", () => {
-  assert.equal(betStatusQuery("authenticated-player", "../other-player"), null);
+  assert.equal(betStatusKey("authenticated-player", "../other-player"), null);
 });
 
 test("status lookup accepts boundary-safe IDs and rejects empty or oversized IDs", () => {
-  assert.ok(betStatusQuery("authenticated-player", "A".repeat(128)));
-  assert.equal(betStatusQuery("authenticated-player", ""), null);
-  assert.equal(betStatusQuery("authenticated-player", "A".repeat(129)), null);
-  assert.equal(betStatusQuery("authenticated-player", "contains_underscore"), null);
+  assert.ok(betStatusKey("authenticated-player", "A".repeat(128)));
+  assert.equal(betStatusKey("authenticated-player", ""), null);
+  assert.equal(betStatusKey("authenticated-player", "A".repeat(129)), null);
+  assert.equal(betStatusKey("authenticated-player", "contains_underscore"), null);
 });
 
 test("history lists only resolved records for the authenticated player newest first", () => {
   assert.deepEqual(resolvedBetsQuery("authenticated-player"), {
-    KeyConditionExpression: "playerId = :playerId AND begins_with(recordKey, :resolvedPrefix)",
+    KeyConditionExpression: "playerId = :playerId",
+    FilterExpression: "#status = :resolved",
+    ExpressionAttributeNames: { "#status": "status" },
     ExpressionAttributeValues: {
       ":playerId": "authenticated-player",
-      ":resolvedPrefix": "BET#",
+      ":resolved": "resolved",
     },
-    ScanIndexForward: false,
     ConsistentRead: true,
   });
+});
+
+test("history explicitly orders stable-key bets by creation time newest first", () => {
+  const older = { betId: "z-random", createdAt: "2026-08-20T12:00:00.000Z" };
+  const newer = { betId: "a-random", createdAt: "2026-08-20T12:01:00.000Z" };
+  assert.deepEqual(sortResolvedBets([older, newer]), [newer, older]);
 });

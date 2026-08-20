@@ -6,9 +6,8 @@ import {
 } from "@aws-sdk/lib-dynamodb";
 
 export interface ActiveBet {
-  id: string;
+  betId: string;
   playerId: string;
-  recordKey: "ACTIVE";
   direction: "up" | "down";
   status: "active";
   startPrice: string;
@@ -83,45 +82,39 @@ export class BetRepository implements BetStore {
     bet: ActiveBet,
     resolution: BetResolution,
   ): Promise<ResolutionWriteResult> {
-    const resolvedBet = {
-      ...bet,
-      ...resolution,
-      recordKey: `BET#${bet.startEventTimestamp}#${bet.id}`,
-      status: "resolved",
-    };
-
     try {
       await this.client.send(
         new TransactWriteCommand({
           TransactItems: [
             {
-              Delete: {
+              Update: {
                 TableName: this.tableName,
-                Key: { playerId: bet.playerId, recordKey: "ACTIVE" },
-                ConditionExpression: "#status = :active AND #id = :id",
-                ExpressionAttributeNames: { "#status": "status", "#id": "id" },
+                Key: { playerId: bet.playerId, betId: bet.betId },
+                UpdateExpression:
+                  "SET #status = :resolved, endPrice = :endPrice, endEventTimestamp = :endEventTimestamp, #result = :result",
+                ConditionExpression: "#status = :active",
+                ExpressionAttributeNames: {
+                  "#status": "status",
+                  "#result": "result",
+                },
                 ExpressionAttributeValues: {
                   ":active": "active",
-                  ":id": bet.id,
+                  ":resolved": "resolved",
+                  ":endPrice": resolution.endPrice,
+                  ":endEventTimestamp": resolution.endEventTimestamp,
+                  ":result": resolution.result,
                 },
-              },
-            },
-            {
-              Put: {
-                TableName: this.tableName,
-                Item: resolvedBet,
-                ConditionExpression:
-                  "attribute_not_exists(playerId) AND attribute_not_exists(recordKey)",
               },
             },
             {
               Update: {
                 TableName: this.playersTableName,
                 Key: { playerId: bet.playerId },
-                UpdateExpression: "ADD #score :scoreChange",
-                ConditionExpression: "attribute_exists(playerId)",
+                UpdateExpression: "REMOVE activeBetId ADD #score :scoreChange",
+                ConditionExpression: "activeBetId = :id",
                 ExpressionAttributeNames: { "#score": "score" },
                 ExpressionAttributeValues: {
+                  ":id": bet.betId,
                   ":scoreChange": resolution.result === "won" ? 1 : -1,
                 },
               },
@@ -136,7 +129,9 @@ export class BetRepository implements BetStore {
         error.name === "TransactionCanceledException" &&
         "CancellationReasons" in error &&
         Array.isArray(error.CancellationReasons) &&
-        error.CancellationReasons[0]?.Code === "ConditionalCheckFailed"
+        error.CancellationReasons.some(
+          (reason: { Code?: string }) => reason.Code === "ConditionalCheckFailed",
+        )
       ) {
         return "already_resolved";
       }

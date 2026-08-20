@@ -6,6 +6,7 @@ export const playerResponseSchema = z.object({
   email: z.email(),
   username: z.string().min(2).max(32),
   score: z.number().int(),
+  activeBetId: z.string().min(1).max(128).regex(/^[A-Za-z0-9-]+$/).optional(),
   createdAt: z.iso.datetime({ offset: true }),
 });
 export type Player = z.infer<typeof playerResponseSchema>;

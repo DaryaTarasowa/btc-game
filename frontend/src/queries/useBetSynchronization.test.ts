@@ -1,16 +1,11 @@
 import { afterEach, expect, test, vi } from "vitest";
 import type { ActiveBet, ResolvedBet } from "@/api/bets";
-import { clearBetPointer, millisecondsUntilTarget, readBetPointer, statusRefetchInterval, statusStaleTime, storeBetPointer } from "@/queries/useBetSynchronization";
+import { millisecondsUntilTarget, statusRefetchInterval, statusStaleTime } from "@/queries/useBetSynchronization";
 
 const active = {
   status: "active",
   resolutionTargetTimestamp: "2026-08-20T12:01:00.000Z",
 } as ActiveBet;
-
-function storage() {
-  const values = new Map<string, string>();
-  return { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value), removeItem: (key: string) => values.delete(key) };
-}
 
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
@@ -29,29 +24,6 @@ test("polls active status every second only after the target", () => {
 
 test("resolved status stops polling", () => {
   expect(statusRefetchInterval({ status: "resolved" } as ResolvedBet, true)).toBe(false);
-});
-
-test("localStorage contains only the bet ID pointer and is cleared on resolution", () => {
-  vi.stubGlobal("localStorage", storage());
-  storeBetPointer("player-1", "bet-1");
-  expect(readBetPointer("player-1")).toBe("bet-1");
-  clearBetPointer("player-1");
-  expect(readBetPointer("player-1")).toBeNull();
-});
-
-test("rejects malformed stored pointers and removes the legacy full-bet cache", () => {
-  const values = new Map([
-    ["btc-game.activeBetId.v1.player-1", "../another-player"],
-    ["btc-game.activeBet.v1.player-1", JSON.stringify({ id: "legacy" })],
-  ]);
-  vi.stubGlobal("localStorage", {
-    getItem: (key: string) => values.get(key) ?? null,
-    setItem: (key: string, value: string) => values.set(key, value),
-    removeItem: (key: string) => values.delete(key),
-  });
-  expect(readBetPointer("player-1")).toBeNull();
-  expect(values.has("btc-game.activeBet.v1.player-1")).toBe(false);
-  expect(readBetPointer(null)).toBeNull();
 });
 
 test("caps elapsed targets at zero and keeps resolved data indefinitely fresh", () => {

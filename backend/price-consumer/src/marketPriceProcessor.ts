@@ -13,13 +13,14 @@ export interface MarketBetResolver {
 }
 
 export type Logger = (
+  //TODO: move to utils.ts and reuse in all places where logging is needed
   level: LogLevel,
   event: string,
   details?: Record<string, unknown>,
 ) => void;
 
 export interface MarketPriceProcessorSettings {
-  product: "BTC-USD";
+  product: "BTC-USD"; //TODO get it from settings, make generic for other products
   repository: PriceHistoryRepository;
   livePricePublisher: PricePublisher;
   betResolver: MarketBetResolver;
@@ -48,7 +49,12 @@ export class MarketPriceProcessor {
     log,
   }: MarketPriceProcessorSettings): Promise<MarketPriceProcessor> {
     const writer = await PriceHistoryWriter.create({ product, repository });
-    return new MarketPriceProcessor(writer, livePricePublisher, betResolver, log);
+    return new MarketPriceProcessor(
+      writer,
+      livePricePublisher,
+      betResolver,
+      log,
+    );
   }
 
   public get historyWriteFailed(): boolean {
@@ -67,7 +73,7 @@ export class MarketPriceProcessor {
     }
 
     const resolutionScheduled = this.betResolver.process(marketPrice);
-    if (guardResult === "unchanged_price" && !resolutionScheduled) return;
+    if (guardResult === "unchanged_price" && !resolutionScheduled) return; // we still procced the events if they are used for bet resolution
 
     const processing = this.processAccepted(marketPrice, resolutionScheduled);
     this.pending.add(processing);
