@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from "vitest";
-import { deletePlayer, ensurePlayer, getPlayer, isPlayerId, updatePlayerUsername } from "@/api/players";
+import { deletePlayer, ensurePlayer, getPlayer, isPlayerId } from "@/api/players";
 
 vi.mock("@/api/auth", () => ({ authHeaders: vi.fn(async (json: boolean) => json ? { authorization: "Bearer token", "content-type": "application/json" } : { authorization: "Bearer token" }) }));
 
@@ -21,21 +21,18 @@ test("rejects unsafe player identity characters", () => {
   expect(isPlayerId("player/id?admin=true")).toBe(false);
 });
 
-test("loads, creates, and updates the authenticated player", async () => {
+test("loads and creates the authenticated player", async () => {
   vi.stubEnv("VITE_CREATE_PLAYER_URL", "https://example.test/players/");
   const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => player });
   vi.stubGlobal("fetch", fetchMock);
 
   await expect(getPlayer()).resolves.toEqual(player);
   await expect(ensurePlayer()).resolves.toEqual(player);
-  await expect(updatePlayerUsername("New Name")).resolves.toEqual(player);
   expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
     "https://example.test/players/me",
     "https://example.test/players",
-    "https://example.test/players/me",
   ]);
   expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({ method: "POST", body: "{}" });
-  expect(fetchMock.mock.calls[2]?.[1]).toMatchObject({ method: "PATCH", body: JSON.stringify({ username: "New Name" }) });
 });
 
 test("deletes account data with an authenticated request", async () => {

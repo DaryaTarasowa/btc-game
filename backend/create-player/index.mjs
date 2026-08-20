@@ -58,22 +58,6 @@ export const handler = async (event) => {
       return response(200, result.Attributes);
     }
 
-    if (method === "PATCH") {
-      let body;
-      try { body = JSON.parse(event?.body ?? ""); } catch { return response(400, { error: "invalid_json" }); }
-      const username = validUsername(body?.username);
-      if (!username) return response(400, { error: "invalid_username", message: "Username must be 2–32 letters, numbers, spaces, dots, underscores, or hyphens." });
-      const result = await dynamodb.send(new UpdateCommand({
-        TableName: playersTable,
-        Key: { playerId },
-        UpdateExpression: "SET username = :username",
-        ExpressionAttributeValues: { ":username": username },
-        ConditionExpression: "attribute_exists(playerId)",
-        ReturnValues: "ALL_NEW",
-      }));
-      return response(200, result.Attributes);
-    }
-
     if (method === "DELETE") {
       await deleteBets(playerId);
       await dynamodb.send(new DeleteCommand({ TableName: playersTable, Key: { playerId } }));

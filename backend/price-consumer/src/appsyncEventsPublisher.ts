@@ -11,6 +11,12 @@ const REGION = "eu-central-1";
 type RequestSigner = Pick<SignatureV4, "sign">;
 type Fetcher = typeof fetch;
 
+/**
+ * Publishes live BTC/USD market prices to the AppSync Events channel.
+ *
+ * Signs each request with AWS Signature V4 using the runtime AWS credentials
+ * and sends the market price to the configured AppSync Events endpoint.
+ */
 export class AppsyncEventsPublisher implements PricePublisher {
   public constructor(
     private readonly endpoint: string,

@@ -39,14 +39,6 @@ export async function ensurePlayer(): Promise<Player> {
   }));
 }
 
-export async function updatePlayerUsername(username: string): Promise<Player> {
-  return parsePlayer(await fetch(`${endpoint()}/me`, {
-    method: "PATCH",
-    headers: await authHeaders(true),
-    body: JSON.stringify({ username }),
-  }));
-}
-
 export async function deletePlayer(): Promise<void> {
   const response = await fetch(`${endpoint()}/me`, { method: "DELETE", headers: await authHeaders() });
   if (!response.ok) throw new Error(`Account data could not be deleted (${response.status}).`);
