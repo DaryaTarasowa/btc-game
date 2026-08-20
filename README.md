@@ -13,13 +13,11 @@ A small serverless BTC prediction game deployed on AWS.
 
 The application is deployed to `eu-central-1`.
 
-## Known limitations
+## User accounts
 
-Player identity is currently anonymous and stored only in the browser's `localStorage`.
+Amazon Cognito provides email/password registration, login, logout, and durable sessions. Registrations are automatically confirmed by a minimal pre-sign-up trigger, so this demo does not require an email confirmation-code step. The Cognito `sub` claim is the authoritative player ID; API Gateway verifies the JWT before protected player and bet routes run. DynamoDB stores the player's username and score. The frontend never creates or persists its own player identity.
 
-Clearing site data or using a different browser or device loses access to the existing player identity. The player record remains in DynamoDB, but there is currently no account recovery mechanism.
-
-Persistent authentication and account recovery are intentionally out of scope for the current implementation.
+The active-bet browser cache remains intentionally denormalized in `localStorage` and is keyed by the authenticated Cognito player ID. It is game-display state, not authentication state.
 
 ## Repository
 
@@ -302,13 +300,7 @@ terraform output frontend_url
 
 Open the returned URL in a browser.
 
-The page should show the login button. After clicking it, a player is created through the API and the page should display:
-
-```text
-You logged in with the id <UUID>
-```
-
-The UUID is stored in the browser's local storage, so refreshing the page should keep the player logged in.
+Create an account with an email, password, and username. The player is signed in immediately. Refreshing or reopening the browser restores the Cognito session. The account controls allow changing the username, logging out, and permanently deleting the account data.
 
 Verify the price consumer after deployment:
 

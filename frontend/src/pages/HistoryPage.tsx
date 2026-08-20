@@ -2,14 +2,14 @@ import { Link } from "@tanstack/react-router";
 import { usePlayer } from "../context/usePlayer";
 
 export function HistoryPage() {
-  const { playerId } = usePlayer();
+  const { playerId, player } = usePlayer();
   return (
     <section className="history-page">
       <p className="eyebrow">GAME HISTORY</p>
       {playerId ? (
         <>
           <h1>Your predictions</h1>
-          <p className="identity">History for <strong>{playerId}</strong></p>
+          <p className="identity">History for <strong>{player?.username}</strong></p>
           <p className="history-page__empty">No completed predictions yet.</p>
         </>
       ) : (

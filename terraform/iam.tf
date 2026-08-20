@@ -25,6 +25,32 @@ resource "aws_iam_role" "create_player" {
   permissions_boundary = local.runtime_permissions_boundary_arn
 }
 
+resource "aws_iam_role" "confirm_player_sign_up" {
+  name                 = "btc-game-confirm-player-sign-up"
+  description          = "Runtime role for automatically confirming BTC game registrations."
+  assume_role_policy   = local.lambda_trust_policy
+  max_session_duration = 3600
+  permissions_boundary = local.runtime_permissions_boundary_arn
+}
+
+resource "aws_iam_role_policy" "confirm_player_sign_up_runtime" {
+  name = "btc-game-confirm-player-sign-up-runtime"
+  role = aws_iam_role.confirm_player_sign_up.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ]
+      Resource = "arn:aws:logs:${var.aws_region}:*:log-group:/aws/lambda/btc-game-confirm-player-sign-up:*"
+    }]
+  })
+}
+
 resource "aws_iam_role_policy" "create_player_runtime" {
   name = "btc-game-create-player-runtime"
   role = aws_iam_role.create_player.name
@@ -44,10 +70,16 @@ resource "aws_iam_role_policy" "create_player_runtime" {
       {
         Effect = "Allow"
         Action = [
+          "dynamodb:DeleteItem",
           "dynamodb:GetItem",
-          "dynamodb:PutItem"
+          "dynamodb:UpdateItem"
         ]
         Resource = aws_dynamodb_table.players.arn
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["dynamodb:BatchWriteItem", "dynamodb:Query"]
+        Resource = aws_dynamodb_table.bets.arn
       }
     ]
   })

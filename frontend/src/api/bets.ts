@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { isPlayerId } from "./players";
 import type { MarketPrice } from "./prices";
+import { authHeaders } from "./auth";
 
 export type BetDirection = "up" | "down";
 
@@ -19,20 +20,18 @@ export const activeBetSchema = z.object({
 export type ActiveBet = z.infer<typeof activeBetSchema>;
 
 export interface CreateBetInput {
-  playerId: string;
   direction: BetDirection;
   point: MarketPrice;
 }
 
-export async function createBet({ playerId, direction, point }: CreateBetInput): Promise<ActiveBet> {
+export async function createBet({ direction, point }: CreateBetInput): Promise<ActiveBet> {
   const endpoint = import.meta.env.VITE_CREATE_BET_URL;
   if (!endpoint) throw new Error("The bet endpoint is not configured.");
 
   const response = await fetch(endpoint, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: await authHeaders(true),
     body: JSON.stringify({
-      playerId,
       direction,
       startPrice: point.price,
       startEventTimestamp: point.eventTimestamp,

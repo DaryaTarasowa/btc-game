@@ -80,7 +80,18 @@ button {
 .history-page { width: min(760px, 100%); margin: 0 auto; }
 .history-page__empty { margin-top: 40px; color: #8490a9; }
 
-.login-control { margin-bottom: 28px; }
+.login-control { display: grid; gap: 10px; margin-bottom: 28px; }
+.login-control input,
+.account-control input { width: 100%; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 12px; padding: 12px 14px; color: #fff; background: rgba(8, 11, 18, 0.7); font: inherit; }
+.auth-switch { min-width: 0; padding: 6px; color: #b8c0d9; background: transparent; font-size: 0.84rem; }
+.account-control { margin-top: 20px; text-align: left; }
+.account-control label { display: block; margin-bottom: 7px; color: #9ca8c0; font-size: 0.78rem; font-weight: 700; }
+.inline-fields { display: flex; gap: 8px; }
+.inline-fields button { min-width: auto; padding-inline: 18px; }
+.account-actions { display: flex; gap: 8px; margin-top: 10px; }
+.account-actions button { min-width: 0; flex: 1; padding: 10px; font-size: 0.8rem; }
+.secondary-button { color: #fff; background: rgba(255, 255, 255, 0.1); }
+.danger-button { color: #ffb0b7; background: rgba(255, 104, 119, 0.12); }
 .game-controls { display: flex; gap: 10px; margin-top: 32px; }
 .game-controls__button { min-width: 0; flex: 1; }
 .game-controls__button--up { color: #06251b; background: #35d59a; }
@@ -185,6 +196,8 @@ button:disabled {
   color: #fff;
   overflow-wrap: anywhere;
 }
+.identity small,
+.player-score { display: block; }
 
 .error {
   margin: 22px 0 0;

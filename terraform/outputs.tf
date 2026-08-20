@@ -8,6 +8,16 @@ output "create_player_url" {
   value       = "${aws_apigatewayv2_stage.default.invoke_url}players"
 }
 
+output "cognito_user_pool_id" {
+  description = "Cognito user pool used by frontend authentication."
+  value       = aws_cognito_user_pool.players.id
+}
+
+output "cognito_user_pool_client_id" {
+  description = "Public Cognito app-client ID used by the frontend."
+  value       = aws_cognito_user_pool_client.frontend.id
+}
+
 output "price_history_url" {
   description = "Frontend endpoint that returns recent BTC-USD price history."
   value       = "${aws_apigatewayv2_stage.default.invoke_url}prices"
