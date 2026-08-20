@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { toEpochMilliseconds, toEpochNanoseconds } from "./utils.js";
+import { toEpochMilliseconds, toEpochNanoseconds } from "../utils.js";
 
 test("converts ISO timestamps to epoch milliseconds", () => {
   assert.equal(toEpochMilliseconds("1970-01-01T00:00:01.250Z"), 1_250);

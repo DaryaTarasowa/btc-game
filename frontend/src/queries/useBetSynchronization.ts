@@ -4,6 +4,7 @@ import {
   BetNotFoundError,
   getBet,
   type ActiveBet,
+  type Bet,
   type ResolvedBet,
 } from "@/api/bets";
 import { BetStatus } from "@/domain/bets";
@@ -15,6 +16,17 @@ export function millisecondsUntilTarget(bet: ActiveBet, now = Date.now()) {
   return Math.max(0, Date.parse(bet.resolutionTargetTimestamp) - now);
 }
 
+function isActiveBet(bet: Bet | undefined): bet is ActiveBet {
+  return bet?.status === BetStatus.Active;
+}
+
+interface BetSynchronizationResult {
+  activeBet: ActiveBet | null;
+  resolvedBet: ResolvedBet | null;
+  isRecovering: boolean;
+  trackCreatedBet: (bet: ActiveBet) => void;
+}
+
 /**
  * Keeps the frontend synchronized with the lifecycle of the player's active bet.
  *
@@ -24,7 +36,7 @@ export function millisecondsUntilTarget(bet: ActiveBet, now = Date.now()) {
 export function useBetSynchronization(
   playerId: string | null,
   persistedActiveBetId?: string,
-) {
+): BetSynchronizationResult {
   const queryClient = useQueryClient();
 
   const [betId, setBetId] = useState<string | null>(
@@ -115,8 +127,8 @@ export function useBetSynchronization(
     [playerId, queryClient],
   );
 
-  const activeBet =
-    !isRecovering && query.data?.status === BetStatus.Active
+  const activeBet: ActiveBet | null =
+    !isRecovering && isActiveBet(query.data)
       ? query.data
       : null;
 

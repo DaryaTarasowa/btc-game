@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { AppsyncEventsPublisher } from "./appsyncEventsPublisher.js";
+import { AppsyncEventsPublisher } from "../appsyncEventsPublisher.js";
 
 const marketPrice = {
   product: "BTC-USD",

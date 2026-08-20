@@ -1,38 +1,54 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { usePlayer } from "@/context/usePlayer";
+import {
+  buttonStyle,
+  fadedButtonStyle,
+  modalBackdropStyle,
+  modalPanelStyle,
+  navigationItemStyle,
+} from "@/styles/ui";
+
+const menuActionStyle = `${buttonStyle} w-full rounded-xl bg-transparent px-3.5 py-2.5 text-left text-sm`;
 
 export function AccountPanel() {
   const auth = usePlayer();
-  const [mode, setMode] = useState<"login" | "register">("login");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [registrationUsername, setRegistrationUsername] = useState("");
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const inputClass =
-    "w-full rounded-xl border border-white/15 bg-[#080b12]/70 px-3.5 py-3 text-white outline-none transition focus:border-bitcoin focus:ring-2 focus:ring-bitcoin/25";
-  const buttonClass =
-    "cursor-pointer rounded-full border-0 bg-bitcoin px-7 py-3.5 font-extrabold text-[#14100a] transition duration-150 enabled:hover:-translate-y-0.5 enabled:hover:bg-[#ffad42] focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-white disabled:cursor-wait disabled:opacity-70";
 
-  async function submit(event: FormEvent) {
-    event.preventDefault();
+  useEffect(() => {
+    if (!open) return;
+    const closePanel = (event: MouseEvent) => {
+      if (!panelRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", closePanel);
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closePanel);
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!confirmDelete) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !pending) setConfirmDelete(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [confirmDelete, pending]);
+
+  async function logout() {
     setPending(true);
     setError(null);
     try {
-      if (mode === "login") await auth.login(email, password);
-      if (mode === "register") await auth.register(email, password, registrationUsername);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Authentication failed.");
-    } finally {
-      setPending(false);
-    }
-  }
-
-  async function accountAction(action: () => Promise<void>) {
-    setPending(true);
-    setError(null);
-    try {
-      await action();
+      await auth.logout();
+      setOpen(false);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Account request failed.");
     } finally {
@@ -40,50 +56,96 @@ export function AccountPanel() {
     }
   }
 
-  if (auth.player) {
-    return (
-      <div className="mt-5 text-left">
-        <div className="flex gap-2">
-          <button
-            type="button"
-            className={`${buttonClass} min-w-0 flex-1 bg-white/10 p-2.5 text-xs text-white enabled:hover:bg-white/15`}
-            disabled={pending}
-            onClick={() => void accountAction(auth.logout)}
-          >
-            Log out
-          </button>
-          <button
-            type="button"
-            className={`${buttonClass} min-w-0 flex-1 bg-down/10 p-2.5 text-xs text-[#ffb0b7] enabled:hover:bg-down/20`}
-            disabled={pending}
-            onClick={() => {
-              if (window.confirm("Delete your account, score, and bets permanently?")) {
-                void accountAction(auth.deleteAccount);
-              }
-            }}
-          >
-            Delete account
-          </button>
-        </div>
-        {error && <p className="mt-5.5 text-down">{error}</p>}
-      </div>
-    );
+  async function deleteAccount() {
+    setPending(true);
+    setError(null);
+    try {
+      await auth.deleteAccount();
+      setConfirmDelete(false);
+      setOpen(false);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Account request failed.");
+    } finally {
+      setPending(false);
+    }
   }
 
+  if (!auth.player) return null;
+
   return (
-    <form className="mb-7 grid gap-2.5" onSubmit={(event) => void submit(event)} aria-live="polite">
-      {mode === "register" && (
-        <input className={inputClass} aria-label="Username" value={registrationUsername} onChange={(event) => setRegistrationUsername(event.target.value)} placeholder="Username" minLength={2} maxLength={32} required />
+    <div className="relative" ref={panelRef}>
+      <button
+        type="button"
+        className={`${buttonStyle} ${navigationItemStyle} bg-transparent text-bitcoin hover:bg-white/5 hover:text-[#ffb14d]`}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        onClick={() => {
+          setError(null);
+          setOpen((current) => !current);
+        }}
+      >
+        {auth.player.username}
+      </button>
+
+      {open && (
+        <div
+          className="absolute top-[calc(100%+0.5rem)] right-0 z-10 w-[min(320px,calc(100vw-40px))] rounded-2xl border border-white/10 bg-[#111622]/98 p-3.5 text-left shadow-[0_20px_60px_rgba(0,0,0,0.55)] backdrop-blur-xl"
+          role="dialog"
+          aria-label="Account"
+        >
+          <div className="grid gap-1">
+            <button type="button" className={`${menuActionStyle} text-slate-200 hover:bg-white/10 hover:text-white`} disabled={pending} onClick={() => void logout()}>
+              Log out
+            </button>
+            <button
+              type="button"
+              className={`${menuActionStyle} text-down hover:bg-down/10`}
+              disabled={pending}
+              onClick={() => {
+                setOpen(false);
+                setConfirmDelete(true);
+              }}
+            >
+              Delete account
+            </button>
+          </div>
+          {error && <p className="mt-3 text-sm text-down">{error}</p>}
+        </div>
       )}
-      <input className={inputClass} aria-label="Email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Email" required />
-      <input className={inputClass} aria-label="Password" type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Password" minLength={8} required />
-      <button className={buttonClass} type="submit" disabled={pending}>
-        {pending ? "Please wait…" : mode === "login" ? "Log in" : "Create account"}
-      </button>
-      <button type="button" className="cursor-pointer border-0 bg-transparent p-1.5 text-sm font-extrabold text-slate-300 transition hover:text-white" onClick={() => setMode(mode === "login" ? "register" : "login")}>
-        {mode === "login" ? "Create an account" : "I already have an account"}
-      </button>
-      {error && <p className="mt-5.5 text-down">{error}</p>}
-    </form>
+
+      {confirmDelete && (
+        <div
+          className={modalBackdropStyle}
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !pending) setConfirmDelete(false);
+          }}
+        >
+          <section
+            className={`${modalPanelStyle} max-w-[520px] border-down/50`}
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-account-title"
+            aria-describedby="delete-account-description"
+            style={{ "--modal-origin-x": "0px", "--modal-origin-y": "0px" } as CSSProperties}
+          >
+            <p className="mb-3 text-xs font-extrabold tracking-[0.22em] text-down">PERMANENT ACTION</p>
+            <h2 className="m-0 text-[clamp(1.8rem,5vw,2.7rem)] leading-none" id="delete-account-title">Delete your account?</h2>
+            <p className="mt-5 leading-7 text-slate-300" id="delete-account-description">
+              Your account, score, and complete betting history will be permanently deleted.
+            </p>
+            {error && <p className="mt-4 text-down">{error}</p>}
+            <div className="mt-7 flex gap-2.5">
+              <button type="button" className={`${fadedButtonStyle} min-w-0 flex-1 text-white`} disabled={pending} autoFocus onClick={() => setConfirmDelete(false)}>
+                Keep account
+              </button>
+              <button type="button" className={`${fadedButtonStyle} min-w-0 flex-1 text-down`} disabled={pending} onClick={() => void deleteAccount()}>
+                {pending ? "Deleting…" : "Delete permanently"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+    </div>
   );
 }

@@ -6,13 +6,19 @@ import { PriceChart } from "@/components/PriceChart/PriceChart";
 import { usePlayer } from "@/context/usePlayer";
 import { useResolvedBetChart } from "@/queries/useResolvedBetChart";
 import { BetResult } from "@/domain/bets";
+import {
+  buttonStyle,
+  eyebrowStyle,
+  pageCardStyle,
+  pageTitleStyle,
+} from "@/styles/ui";
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, {
   dateStyle: "medium",
   timeStyle: "medium",
 });
 
-export function HistoryPage() {
+export function HistoryPanel() {
   const { playerId, player } = usePlayer();
   const [selectedBetId, setSelectedBetId] = useState<string | null>(null);
   const history = useQuery({
@@ -26,11 +32,11 @@ export function HistoryPage() {
   const emptyClass = "mt-10 text-[#8490a9]";
 
   return (
-    <section className="mx-auto w-full max-w-[1100px] rounded-3xl border border-white/10 bg-[#141927]/85 p-[clamp(28px,4vw,52px)] text-center shadow-[0_24px_80px_rgba(0,0,0,0.4)]">
-      <p className="mb-3 text-xs font-extrabold tracking-[0.22em] text-bitcoin">GAME HISTORY</p>
+    <section className={`${pageCardStyle} w-full`}>
+      <p className={eyebrowStyle}>GAME HISTORY</p>
       {playerId ? (
         <>
-          <h1 className="mb-7 text-[clamp(2rem,8vw,3.75rem)] leading-[0.98] tracking-[-0.045em]">Your predictions</h1>
+          <h1 className={pageTitleStyle}>Your predictions</h1>
           <p className="m-0 leading-7 text-slate-300">History for <strong className="text-white">{player?.username}</strong></p>
           {history.isPending ? (
             <p className={emptyClass}>Loading completed predictions…</p>
@@ -52,7 +58,7 @@ export function HistoryPage() {
                         <small className="text-[#8490a9] max-[820px]:col-start-2">{dateFormatter.format(new Date(bet.startEventTimestamp))}</small>
                         <button
                           type="button"
-                          className="grid size-[34px] min-w-0 cursor-pointer place-items-center rounded-[9px] border-0 bg-bitcoin/10 p-[7px] text-bitcoin transition hover:bg-bitcoin hover:text-[#171008] focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-white max-[820px]:col-start-3 max-[820px]:row-start-1"
+                          className={`${buttonStyle} grid size-[34px] min-w-0 place-items-center rounded-[9px] bg-bitcoin/10 p-[7px] text-bitcoin hover:bg-bitcoin hover:text-[#171008] max-[820px]:col-start-3 max-[820px]:row-start-1`}
                           aria-label={selectedBetId === bet.betId ? "Hide price chart" : "Show price chart"}
                           title={selectedBetId === bet.betId ? "Hide price chart" : "Show price chart"}
                           aria-expanded={selectedBetId === bet.betId}
@@ -90,7 +96,7 @@ export function HistoryPage() {
         </>
       ) : (
         <>
-          <h1 className="mb-7 text-[clamp(2rem,8vw,3.75rem)] leading-[0.98] tracking-[-0.045em]">Login required</h1>
+          <h1 className={pageTitleStyle}>Login required</h1>
           <p className="m-0 leading-7 text-slate-300">Log in from the market page to see your prediction history.</p>
           <Link to="/" className="mt-6 inline-block rounded-full bg-bitcoin/10 px-3.5 py-2 text-sm font-bold text-bitcoin no-underline transition hover:bg-bitcoin/20">Return to market</Link>
         </>

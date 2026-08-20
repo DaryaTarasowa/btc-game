@@ -4,8 +4,8 @@ import test from "node:test";
 import {
   PriceHistoryWriter,
   type PriceHistoryRepository,
-} from "./priceHistoryWriter.js";
-import type { MarketPriceEventData } from "./types.js";
+} from "../priceHistoryWriter.js";
+import type { MarketPriceEventData } from "../types.js";
 
 const makeMarketPrice = (
   eventTimestamp: string,

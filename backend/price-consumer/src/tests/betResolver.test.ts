@@ -5,10 +5,10 @@ import type {
   BetResolution,
   BetStore,
   ResolutionWriteResult,
-} from "./betRepository.js";
-import { BetResolver } from "./betResolver.js";
-import { BetDirection, BetResult, BetStatus, ResolutionWriteResult as ResolutionResult } from "./domain.js";
-import type { MarketPriceEventData } from "./types.js";
+} from "../betRepository.js";
+import { BetResolver } from "../betResolver.js";
+import { BetDirection, BetResult, BetStatus, ResolutionWriteResult as ResolutionResult } from "../domain.js";
+import type { MarketPriceEventData } from "../types.js";
 
 const TARGET = "2026-08-20T12:01:00.000Z";
 
