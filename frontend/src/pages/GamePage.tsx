@@ -6,6 +6,7 @@ import { usePlayer } from "../context/usePlayer";
 import { useLivePrices, useRecentPrices } from "../queries/useRecentPrices";
 import { useCreateBet } from "../queries/useCreateBet";
 import { useStoredActiveBet } from "../queries/useStoredActiveBet";
+import { usePlayerScore } from "../queries/usePlayerScore";
 
 function useBetCountdown(targetTimestamp?: string) {
   const [, redraw] = useState(0);
@@ -30,6 +31,7 @@ export function GamePage() {
   const [activeBet, setActiveBet] = useStoredActiveBet(playerId);
   const createBet = useCreateBet(setActiveBet);
   const secondsRemaining = useBetCountdown(activeBet?.resolutionTargetTimestamp);
+  const player = usePlayerScore(playerId);
 
   return (
     <div className="game-page">
@@ -39,6 +41,7 @@ export function GamePage() {
         {playerId ? (
           <p className="identity">
             Signed in as <strong>{playerId}</strong>
+            <span className="player-score">Score: {player.data?.score ?? "—"}</span>
           </p>
         ) : (
           <LoginButton />

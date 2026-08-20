@@ -40,6 +40,7 @@ export class BetRepository implements BetStore {
 
   public constructor(
     private readonly tableName: string,
+    private readonly playersTableName: string,
     client?: DynamoDBDocumentClient,
   ) {
     this.client = client ?? DynamoDBDocumentClient.from(new DynamoDBClient({}));
@@ -102,6 +103,18 @@ export class BetRepository implements BetStore {
               Item: resolvedBet,
               ConditionExpression:
                 "attribute_not_exists(playerId) AND attribute_not_exists(recordKey)",
+            },
+          },
+          {
+            Update: {
+              TableName: this.playersTableName,
+              Key: { playerId: bet.playerId },
+              UpdateExpression: "ADD #score :scoreChange",
+              ConditionExpression: "attribute_exists(playerId)",
+              ExpressionAttributeNames: { "#score": "score" },
+              ExpressionAttributeValues: {
+                ":scoreChange": resolution.result === "won" ? 1 : -1,
+              },
             },
           },
         ],

@@ -157,9 +157,25 @@ resource "aws_iam_role_policy" "price_consumer_task" {
         Resource = "${aws_dynamodb_table.bets.arn}/index/status-resolution-target-index"
       },
       {
-        Effect   = "Allow"
-        Action   = "dynamodb:TransactWriteItems"
+        Effect = "Allow"
+        Action = [
+          "dynamodb:DeleteItem",
+          "dynamodb:PutItem"
+        ]
         Resource = aws_dynamodb_table.bets.arn
+      },
+      {
+        Effect   = "Allow"
+        Action   = "dynamodb:UpdateItem"
+        Resource = aws_dynamodb_table.players.arn
+      },
+      {
+        Effect = "Allow"
+        Action = "dynamodb:TransactWriteItems"
+        Resource = [
+          aws_dynamodb_table.bets.arn,
+          aws_dynamodb_table.players.arn
+        ]
       }
     ]
   })

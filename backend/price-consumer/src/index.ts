@@ -12,14 +12,16 @@ interface StartConfig {
   priceHistoryTable: string;
   appsyncEventsEndpoint: string;
   betsTable: string;
+  playersTable: string;
 }
 
 function getConfig(): StartConfig {
   const priceHistoryTable = process.env.PRICE_HISTORY_TABLE;
   const appsyncEventsEndpoint = process.env.APPSYNC_EVENTS_ENDPOINT;
   const betsTable = process.env.BETS_TABLE;
+  const playersTable = process.env.PLAYERS_TABLE;
 
-  if (!priceHistoryTable || !appsyncEventsEndpoint || !betsTable) {
+  if (!priceHistoryTable || !appsyncEventsEndpoint || !betsTable || !playersTable) {
     throw new Error("Missing required environment configuration.");
   }
 
@@ -27,6 +29,7 @@ function getConfig(): StartConfig {
     priceHistoryTable,
     appsyncEventsEndpoint,
     betsTable,
+    playersTable,
   };
 }
 
@@ -48,7 +51,10 @@ async function start(config: StartConfig): Promise<void> {
     const livePricePublisher = new AppsyncEventsPublisher(
       config.appsyncEventsEndpoint,
     );
-    const betResolver = new BetResolver(new BetRepository(config.betsTable), log);
+    const betResolver = new BetResolver(
+      new BetRepository(config.betsTable, config.playersTable),
+      log,
+    );
     await betResolver.start();
     const processor = await MarketPriceProcessor.create({
       repository,
