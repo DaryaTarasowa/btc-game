@@ -3,25 +3,30 @@ import { AppsyncEventsPublisher } from "./appsyncEventsPublisher.js";
 import { MarketPriceProcessor } from "./marketPriceProcessor.js";
 import { PriceHistoryRepository } from "./priceHistoryRepository.js";
 import { log } from "./utils.js";
+import { BetRepository } from "./betRepository.js";
+import { BetResolver } from "./betResolver.js";
 
 const PRODUCT = "BTC-USD";
 
 interface StartConfig {
   priceHistoryTable: string;
   appsyncEventsEndpoint: string;
+  betsTable: string;
 }
 
 function getConfig(): StartConfig {
   const priceHistoryTable = process.env.PRICE_HISTORY_TABLE;
   const appsyncEventsEndpoint = process.env.APPSYNC_EVENTS_ENDPOINT;
+  const betsTable = process.env.BETS_TABLE;
 
-  if (!priceHistoryTable || !appsyncEventsEndpoint) {
+  if (!priceHistoryTable || !appsyncEventsEndpoint || !betsTable) {
     throw new Error("Missing required environment configuration.");
   }
 
   return {
     priceHistoryTable,
     appsyncEventsEndpoint,
+    betsTable,
   };
 }
 
@@ -43,9 +48,12 @@ async function start(config: StartConfig): Promise<void> {
     const livePricePublisher = new AppsyncEventsPublisher(
       config.appsyncEventsEndpoint,
     );
+    const betResolver = new BetResolver(new BetRepository(config.betsTable), log);
+    await betResolver.start();
     const processor = await MarketPriceProcessor.create({
       repository,
       livePricePublisher,
+      betResolver,
       product: PRODUCT,
       log,
     });

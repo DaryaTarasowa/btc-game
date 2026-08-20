@@ -7,6 +7,11 @@ import {
 import type { MarketPriceEventData } from "./types.js";
 import type { LogLevel } from "./utils.js";
 
+export interface MarketBetResolver {
+  process(marketPrice: MarketPriceEventData): void;
+  stop(): Promise<void>;
+}
+
 export type Logger = (
   level: LogLevel,
   event: string,
@@ -17,6 +22,7 @@ export interface MarketPriceProcessorSettings {
   product: "BTC-USD";
   repository: PriceHistoryRepository;
   livePricePublisher: PricePublisher;
+  betResolver: MarketBetResolver;
   log: Logger;
 }
 
@@ -30,6 +36,7 @@ export class MarketPriceProcessor {
   private constructor(
     private readonly writer: PriceHistoryWriter,
     private readonly livePricePublisher: PricePublisher,
+    private readonly betResolver: MarketBetResolver,
     private readonly log: Logger,
   ) {}
 
@@ -37,10 +44,11 @@ export class MarketPriceProcessor {
     product,
     repository,
     livePricePublisher,
+    betResolver,
     log,
   }: MarketPriceProcessorSettings): Promise<MarketPriceProcessor> {
     const writer = await PriceHistoryWriter.create({ product, repository });
-    return new MarketPriceProcessor(writer, livePricePublisher, log);
+    return new MarketPriceProcessor(writer, livePricePublisher, betResolver, log);
   }
 
   public get historyWriteFailed(): boolean {
@@ -54,11 +62,13 @@ export class MarketPriceProcessor {
     if (guardResult !== "accepted") {
       if (guardResult === "non_increasing_event_timestamp") {
         this.logNonIncreasingEventTimestamp(marketPrice);
+        return;
       }
-      return;
     }
 
-    // The authoritative unsampled event remains available here for future bet resolution.
+    this.betResolver.process(marketPrice);
+    if (guardResult === "unchanged_price") return;
+
     const processing = this.processAccepted(marketPrice);
     this.pending.add(processing);
     void processing.finally(() => this.pending.delete(processing));
@@ -66,7 +76,7 @@ export class MarketPriceProcessor {
 
   public async stop(): Promise<void> {
     this.stopping = true;
-    await Promise.all(this.pending);
+    await Promise.all([Promise.all(this.pending), this.betResolver.stop()]);
   }
 
   private async processAccepted(
