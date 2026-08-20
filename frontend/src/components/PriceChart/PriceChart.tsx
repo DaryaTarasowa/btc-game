@@ -15,7 +15,6 @@ import {
 } from "lightweight-charts";
 import type { ActiveBet, ResolvedBet } from "@/api/bets";
 import type { MarketPrice } from "@/api/prices";
-import "@/components/PriceChart/PriceChart.css";
 
 interface PriceChartProps {
   prices: MarketPrice[];
@@ -304,53 +303,58 @@ export function PriceChart({ prices, bet, staticHistory = false }: PriceChartPro
 
   const headlinePrice = chartHeadlinePrice(prices, bet, staticHistory);
   const guideColors = bet ? betGuideColors(bet) : null;
+  const visualState = bet
+    ? staticHistory && bet.status === "resolved" ? bet.result : bet.direction
+    : null;
+  const stateClass = visualState === "up" || visualState === "won"
+    ? "border-up/50 bg-[linear-gradient(150deg,rgba(17,49,42,0.96),rgba(12,16,27,0.96)_58%)] shadow-[0_24px_80px_rgba(0,0,0,0.32),0_0_38px_rgba(53,213,154,0.12)]"
+    : visualState === "down" || visualState === "lost"
+      ? "border-down/50 bg-[linear-gradient(150deg,rgba(55,25,35,0.96),rgba(12,16,27,0.96)_58%)] shadow-[0_24px_80px_rgba(0,0,0,0.32),0_0_38px_rgba(255,104,119,0.12)]"
+      : "border-white/10 bg-[linear-gradient(150deg,rgba(22,28,43,0.96),rgba(12,16,27,0.96))] shadow-[0_24px_80px_rgba(0,0,0,0.32)]";
+  const annotationTextClass = visualState === "up" || visualState === "won" ? "text-up" : "text-down";
 
   return (
     <section
-      className={`price-chart${bet
-        ? staticHistory && bet.status === "resolved"
-          ? ` price-chart--resolved price-chart--${bet.result}`
-          : ` price-chart--active price-chart--${bet.direction}`
-        : ""}`}
+      className={`min-w-0 overflow-hidden rounded-3xl border transition-[border-color,box-shadow,background] duration-200 ${stateClass}`}
       aria-label="BTC to USD price chart"
     >
-      <header className="price-chart__header">
+      <header className="flex items-start justify-between gap-6 px-7 pt-6 pb-2 max-[560px]:px-4.5 max-[560px]:pt-5 max-[560px]:pb-1.5">
         <div>
-          <p className="price-chart__symbol">
-            <span aria-hidden="true">₿</span> BTC / USD
+          <p className="m-0 text-base font-extrabold tracking-[0.04em] text-slate-50">
+            <span className="text-bitcoin" aria-hidden="true">₿</span> BTC / USD
           </p>
-          <p className="price-chart__window">{staticHistory ? "Stored bet window" : "Stored market history · 3 min"}</p>
+          <p className="mt-1.5 mb-0 text-xs text-[#77839e]">{staticHistory ? "Stored bet window" : "Stored market history · 3 min"}</p>
           {bet && (
-            <p className="price-chart__bet-state">
-              <span aria-hidden="true" /> {bet.status === "resolved" ? `${bet.result.toUpperCase()} ${bet.direction.toUpperCase()} prediction` : `${bet.direction.toUpperCase()} position active`}
+            <p className={`mt-2 mb-0 text-xs font-extrabold tracking-[0.08em] uppercase ${annotationTextClass}`}>
+              <span className="mr-1 inline-block size-[7px] rounded-full bg-current shadow-[0_0_0_0_currentColor] motion-safe:animate-[bet-pulse_1.6s_infinite]" aria-hidden="true" /> {bet.status === "resolved" ? `${bet.result.toUpperCase()} ${bet.direction.toUpperCase()} prediction` : `${bet.direction.toUpperCase()} position active`}
             </p>
           )}
         </div>
-        <div className="price-chart__latest">
-          <span>{staticHistory ? "Resolution price" : "Latest price"}</span>
-          <strong>
+        <div className="text-right">
+          <span className="block text-xs tracking-[0.1em] text-[#77839e] uppercase">{staticHistory ? "Resolution price" : "Latest price"}</span>
+          <strong className="mt-1 block text-[clamp(1.35rem,3vw,2rem)] text-white [font-variant-numeric:tabular-nums] max-[560px]:text-xl">
             {headlinePrice ? priceFormatter.format(Number(headlinePrice)) : "—"}
           </strong>
         </div>
       </header>
-      <div className="price-chart__canvas" ref={containerRef}>
-        <div className="price-chart__tooltip" ref={tooltipRef} hidden />
+      <div className="relative min-h-[390px] w-full" ref={containerRef}>
+        <div className="pointer-events-none absolute z-[2] min-w-[130px] rounded-[10px] border border-bitcoin/35 bg-[#080b12]/95 px-3 py-2.5 shadow-[0_8px_28px_rgba(0,0,0,0.4)] [&_span]:mt-0.5 [&_span]:block [&_span]:text-xs [&_span]:text-slate-400 [&_strong]:block [&_strong]:text-sm [&_strong]:text-white [&_strong]:[font-variant-numeric:tabular-nums]" ref={tooltipRef} hidden />
         {staticHistory && bet?.status === "resolved" && guideColors && (
           <>
             <div
-              className="price-chart__time-guide"
+              className="pointer-events-none absolute inset-y-0 z-[2] w-0 border-l border-dotted border-current opacity-50"
               ref={creationGuideRef}
               style={{ color: guideColors.creation }}
               aria-hidden="true"
             />
             <div
-              className="price-chart__time-guide"
+              className="pointer-events-none absolute inset-y-0 z-[2] w-0 border-l border-dotted border-current opacity-50"
               ref={resolutionGuideRef}
               style={{ color: guideColors.resolution ?? undefined }}
               aria-hidden="true"
             />
             <div
-              className="price-chart__resolution-dot"
+              className="pointer-events-none absolute z-[3] size-[11px] -translate-1/2 rounded-full border-2 border-[#101521] bg-current shadow-[0_0_0_2px_currentColor]"
               ref={resolutionDotRef}
               style={{ color: guideColors.resolution ?? undefined }}
               aria-hidden="true"

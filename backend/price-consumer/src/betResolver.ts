@@ -1,12 +1,13 @@
-import type {
-  ActiveBet,
-  BetResolution,
-  BetStore,
-} from "./betRepository.js";
+import type { ActiveBet, BetResolution, BetStore } from "./betRepository.js";
 import type { MarketPriceEventData } from "./types.js";
-import { toEpochNanoseconds, type LogLevel } from "./utils.js";
+import {
+  toEpochNanoseconds,
+  type LogLevel,
+  compareDecimal,
+  queryTimestamp,
+} from "./utils.js";
 
-const DEFAULT_REFRESH_INTERVAL_MS = 1_000;
+const DEFAULT_RELOAD_INTERVAL_MS = 1_000;
 const DEFAULT_LOOKAHEAD_MS = 5_000;
 
 type Logger = (
@@ -16,49 +17,44 @@ type Logger = (
 ) => void;
 
 interface BetResolverSettings {
-  refreshIntervalMs?: number;
+  /** How often active bets are loaded from the repository. */
+  reloadIntervalMs?: number;
+
+  /**
+   * How far beyond the current time the resolver preloads active bets.
+   * This ensures bets approaching their resolution time are already present
+   * in the in-memory working set when the relevant market event arrives.
+   */
   lookaheadMs?: number;
+
+  /** Injectable clock used primarily for deterministic testing. */
   now?: () => Date;
+
+  /** Injectable timer functions used primarily for testing. */
   setInterval?: typeof setInterval;
   clearInterval?: typeof clearInterval;
 }
 
-function queryTimestamp(date: Date): string {
-  return date.toISOString().replace("Z", "000000Z");
-}
-
-function normalizedDecimal(value: string): { whole: string; fraction: string } {
-  const [wholePart = "0", fractionPart = ""] = value.split(".");
-  return {
-    whole: wholePart.replace(/^0+(?=\d)/, ""),
-    fraction: fractionPart.replace(/0+$/, ""),
-  };
-}
-
-export function compareDecimal(left: string, right: string): number {
-  const a = normalizedDecimal(left);
-  const b = normalizedDecimal(right);
-  if (a.whole.length !== b.whole.length) return a.whole.length > b.whole.length ? 1 : -1;
-  if (a.whole !== b.whole) return a.whole > b.whole ? 1 : -1;
-  const width = Math.max(a.fraction.length, b.fraction.length);
-  const aFraction = a.fraction.padEnd(width, "0");
-  const bFraction = b.fraction.padEnd(width, "0");
-  return aFraction === bFraction ? 0 : aFraction > bFraction ? 1 : -1;
-}
-
 export class BetResolver {
-  private readonly workingSet = new Map<string, ActiveBet>();
-  private readonly candidates = new Map<string, BetResolution>();
-  private readonly resolving = new Set<string>();
-  private readonly pending = new Set<Promise<void>>();
-  private readonly refreshIntervalMs: number;
+  private readonly activeBetsById = new Map<string, ActiveBet>();
+
+  // Retains the first eligible resolution until it is successfully persisted,
+  // so a failed write can be retried without using a later market event.
+  private readonly retainedResolutions = new Map<string, BetResolution>();
+
+  private readonly betsBeingResolved = new Set<string>();
+
+  // Repository writes that must finish before shutdown.
+  private readonly inFlightWrites = new Set<Promise<void>>();
+  private readonly reloadIntervalMs: number;
   private readonly lookaheadMs: number;
   private readonly now: () => Date;
   private readonly setIntervalFn: typeof setInterval;
   private readonly clearIntervalFn: typeof clearInterval;
   private latestMarketEventMs: number | undefined;
-  private refreshTimer: ReturnType<typeof setInterval> | undefined;
-  private refreshInFlight: Promise<void> | undefined;
+  private reloadTimer: ReturnType<typeof setInterval> | undefined;
+  private reloadInFlight: Promise<void> | undefined;
+
   private stopping = false;
 
   public constructor(
@@ -66,7 +62,8 @@ export class BetResolver {
     private readonly log: Logger,
     settings: BetResolverSettings = {},
   ) {
-    this.refreshIntervalMs = settings.refreshIntervalMs ?? DEFAULT_REFRESH_INTERVAL_MS;
+    this.reloadIntervalMs =
+      settings.reloadIntervalMs ?? DEFAULT_RELOAD_INTERVAL_MS;
     this.lookaheadMs = settings.lookaheadMs ?? DEFAULT_LOOKAHEAD_MS;
     this.now = settings.now ?? (() => new Date());
     this.setIntervalFn = settings.setInterval ?? setInterval;
@@ -74,84 +71,119 @@ export class BetResolver {
   }
 
   public async start(): Promise<void> {
-    await this.refresh();
+    await this.reload();
     if (this.stopping) return;
-    this.refreshTimer = this.setIntervalFn(() => void this.refresh(), this.refreshIntervalMs);
-    this.refreshTimer.unref?.();
+    this.reloadTimer = this.setIntervalFn(
+      () => void this.reload(),
+      this.reloadIntervalMs,
+    );
+    this.reloadTimer.unref?.();
   }
 
-  public refresh(): Promise<void> {
+  public reload(): Promise<void> {
     if (this.stopping) return Promise.resolve();
-    if (this.refreshInFlight) return this.refreshInFlight;
+    if (this.reloadInFlight) return this.reloadInFlight;
 
-    const currentMs = Math.max(this.now().getTime(), this.latestMarketEventMs ?? 0);
+    // Use the market time if it is ahead of the system clock.
+    const currentMs = Math.max(
+      this.now().getTime(),
+      this.latestMarketEventMs ?? 0,
+    );
     const operation = this.repository
-      .queryActiveThrough(queryTimestamp(new Date(currentMs + this.lookaheadMs)))
-      .then((bets) => {
-        for (const bet of bets) this.workingSet.set(bet.id, bet);
-        for (const [id, resolution] of this.candidates) {
-          const bet = this.workingSet.get(id);
-          if (bet) this.scheduleResolution(bet, resolution);
+      .queryActiveThrough(
+        queryTimestamp(new Date(currentMs + this.lookaheadMs)),
+      )
+      .then((activeBetsDue) => {
+        for (const bet of activeBetsDue) this.activeBetsById.set(bet.id, bet);
+
+        // Recovery only: retry resolutions whose previous write failed.
+        if (this.retainedResolutions.size > 0) {
+          this.retryRetainedResolutions();
         }
       })
       .catch((error: unknown) => {
-        this.log("error", "bet_refresh_failed", {
-          message: error instanceof Error ? error.message : "Unknown DynamoDB error",
+        this.log("error", "bet_reload_failed", {
+          message:
+            error instanceof Error ? error.message : "Unknown DynamoDB error",
         });
       })
       .finally(() => {
-        this.refreshInFlight = undefined;
+        this.reloadInFlight = undefined;
       });
-    this.refreshInFlight = operation;
+    this.reloadInFlight = operation;
     return operation;
   }
 
+  private shouldResolve(bet: ActiveBet, event: MarketPriceEventData): boolean {
+    const eventTime = toEpochNanoseconds(event.eventTimestamp);
+    const targetTime = toEpochNanoseconds(bet.resolutionTargetTimestamp);
+
+    const targetReached = eventTime >= targetTime;
+    const priceChanged = compareDecimal(event.price, bet.startPrice) !== 0;
+
+    return targetReached && priceChanged;
+  }
+
+  // Returns true if the event caused any bets to be scheduled for resolution, false otherwise.
   public process(event: MarketPriceEventData): boolean {
     if (this.stopping) return false;
+
     this.latestMarketEventMs = Math.max(
       this.latestMarketEventMs ?? 0,
       Date.parse(event.eventTimestamp),
     );
-    const eventTime = toEpochNanoseconds(event.eventTimestamp);
+
     let resolutionScheduled = false;
 
-    for (const bet of this.workingSet.values()) {
-      if (eventTime < toEpochNanoseconds(bet.resolutionTargetTimestamp)) continue;
-      const comparison = compareDecimal(event.price, bet.startPrice);
-      if (comparison === 0) continue;
+    for (const bet of this.activeBetsById.values()) {
+      if (this.shouldResolve(bet, event)) {
+        const existingResolution = this.retainedResolutions.get(bet.id);
+        const comparison = compareDecimal(event.price, bet.startPrice);
 
-      const existingResolution = this.candidates.get(bet.id);
-      const resolution: BetResolution = existingResolution ?? {
-        endPrice: event.price,
-        endEventTimestamp: event.eventTimestamp,
-        result:
-          bet.direction === "up"
-            ? comparison > 0 ? "won" : "lost"
-            : comparison < 0 ? "won" : "lost",
-      };
-      this.candidates.set(bet.id, resolution);
-      const scheduled = this.scheduleResolution(bet, resolution);
-      if (!existingResolution && scheduled) resolutionScheduled = true;
+        const resolution: BetResolution = existingResolution ?? {
+          endPrice: event.price,
+          endEventTimestamp: event.eventTimestamp,
+          result:
+            bet.direction === "up"
+              ? comparison > 0
+                ? "won"
+                : "lost"
+              : comparison < 0
+                ? "won"
+                : "lost",
+        };
+
+        this.retainedResolutions.set(bet.id, resolution);
+
+        const scheduled = this.scheduleResolution(bet, resolution);
+        if (!existingResolution && scheduled) {
+          // we use exactly this event for the resolution
+          resolutionScheduled = true;
+        }
+      }
     }
 
     return resolutionScheduled;
   }
 
-  public async stop(): Promise<void> {
-    this.stopping = true;
-    if (this.refreshTimer) this.clearIntervalFn(this.refreshTimer);
-    await this.refreshInFlight;
-    await Promise.all(this.pending);
+  private retryRetainedResolutions(): void {
+    for (const [id, resolution] of this.retainedResolutions) {
+      const bet = this.activeBetsById.get(id);
+      if (bet) this.scheduleResolution(bet, resolution);
+    }
   }
 
-  private scheduleResolution(bet: ActiveBet, resolution: BetResolution): boolean {
-    if (this.resolving.has(bet.id) || this.stopping) return false;
-    this.resolving.add(bet.id);
+  private scheduleResolution(
+    bet: ActiveBet,
+    resolution: BetResolution,
+  ): boolean {
+    if (this.betsBeingResolved.has(bet.id) || this.stopping) return false;
+    this.betsBeingResolved.add(bet.id);
     const operation = this.repository
       .resolveBetConditionally(bet, resolution)
       .then((result) => {
-        this.workingSet.delete(bet.id);
-        this.candidates.delete(bet.id);
+        this.activeBetsById.delete(bet.id);
+        this.retainedResolutions.delete(bet.id);
         this.log("info", "bet_resolved", {
           betId: bet.id,
           playerId: bet.playerId,
@@ -163,14 +195,22 @@ export class BetResolver {
         this.log("error", "bet_resolution_failed", {
           betId: bet.id,
           playerId: bet.playerId,
-          message: error instanceof Error ? error.message : "Unknown DynamoDB error",
+          message:
+            error instanceof Error ? error.message : "Unknown DynamoDB error",
         });
       })
       .finally(() => {
-        this.resolving.delete(bet.id);
-        this.pending.delete(operation);
+        this.betsBeingResolved.delete(bet.id);
+        this.inFlightWrites.delete(operation);
       });
-    this.pending.add(operation);
+    this.inFlightWrites.add(operation);
     return true;
+  }
+
+  public async stop(): Promise<void> {
+    this.stopping = true;
+    if (this.reloadTimer) this.clearIntervalFn(this.reloadTimer);
+    await this.reloadInFlight;
+    await Promise.all(this.inFlightWrites);
   }
 }

@@ -1,6 +1,6 @@
 import { createContext, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { deleteUser, getCurrentUser, signIn, signOut, signUp, updateUserAttributes } from "aws-amplify/auth";
-import { deletePlayer, ensurePlayer, updatePlayerUsername, type Player } from "@/api/players";
+import { deleteUser, getCurrentUser, signIn, signOut, signUp } from "aws-amplify/auth";
+import { deletePlayer, ensurePlayer, type Player } from "@/api/players";
 
 export interface PlayerContextValue {
   playerId: string | null;
@@ -9,7 +9,6 @@ export interface PlayerContextValue {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, username: string) => Promise<void>;
   logout: () => Promise<void>;
-  setUsername: (username: string) => Promise<void>;
   deleteAccount: () => Promise<void>;
 }
 
@@ -48,10 +47,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       async logout() {
         await signOut();
         setPlayer(null);
-      },
-      async setUsername(username) {
-        await updateUserAttributes({ userAttributes: { preferred_username: username } });
-        setPlayer(await updatePlayerUsername(username));
       },
       async deleteAccount() {
         await deletePlayer();

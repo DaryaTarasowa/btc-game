@@ -4,7 +4,7 @@ resource "aws_apigatewayv2_api" "player" {
 
   cors_configuration {
     allow_headers = ["authorization", "content-type"]
-    allow_methods = ["DELETE", "GET", "PATCH", "POST", "OPTIONS"]
+    allow_methods = ["DELETE", "GET", "POST", "OPTIONS"]
     allow_origins = ["*"]
     max_age       = 3600
   }
@@ -73,14 +73,6 @@ resource "aws_lambda_permission" "api_get_player" {
   source_arn    = "${aws_apigatewayv2_api.player.execution_arn}/*/GET/players/me"
 }
 
-resource "aws_apigatewayv2_route" "update_player" {
-  api_id             = aws_apigatewayv2_api.player.id
-  route_key          = "PATCH /players/me"
-  target             = "integrations/${aws_apigatewayv2_integration.create_player.id}"
-  authorization_type = "JWT"
-  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
-}
-
 resource "aws_apigatewayv2_route" "delete_player" {
   api_id             = aws_apigatewayv2_api.player.id
   route_key          = "DELETE /players/me"
@@ -89,12 +81,12 @@ resource "aws_apigatewayv2_route" "delete_player" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
-resource "aws_lambda_permission" "api_manage_player" {
-  statement_id  = "AllowPlayerApiInvokeManagePlayer"
+resource "aws_lambda_permission" "api_delete_player" {
+  statement_id  = "AllowPlayerApiInvokeDeletePlayer"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.create_player.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.player.execution_arn}/*/*/players/me"
+  source_arn    = "${aws_apigatewayv2_api.player.execution_arn}/*/DELETE/players/me"
 }
 
 resource "aws_apigatewayv2_integration" "get_prices" {
