@@ -23,6 +23,11 @@ output "bets_table_name" {
   value       = aws_dynamodb_table.bets.name
 }
 
+output "players_table_name" {
+  description = "DynamoDB table containing player scores."
+  value       = aws_dynamodb_table.players.name
+}
+
 output "amplify_app_id" {
   value = aws_amplify_app.frontend.id
 }

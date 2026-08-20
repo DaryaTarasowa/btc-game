@@ -24,7 +24,7 @@ test("queries active bets through the resolution-target GSI", async () => {
       return { Items: [activeBet] };
     },
   } as unknown as DynamoDBDocumentClient;
-  const repository = new BetRepository("btc-game-bets", client);
+  const repository = new BetRepository("btc-game-bets", "btc-game-players", client);
 
   assert.deepEqual(
     await repository.queryActiveThrough("2026-08-20T12:01:05.000000000Z"),
@@ -43,7 +43,7 @@ test("atomically moves an active bet to resolved history", async () => {
       return {};
     },
   } as unknown as DynamoDBDocumentClient;
-  const repository = new BetRepository("btc-game-bets", client);
+  const repository = new BetRepository("btc-game-bets", "btc-game-players", client);
 
   assert.equal(
     await repository.resolveBetConditionally(activeBet, {
@@ -54,7 +54,7 @@ test("atomically moves an active bet to resolved history", async () => {
     "resolved",
   );
   assert.ok(command instanceof TransactWriteCommand);
-  const [deletion, history] = command.input.TransactItems ?? [];
+  const [deletion, history, scoreUpdate] = command.input.TransactItems ?? [];
   assert.equal(deletion?.Delete?.ConditionExpression, "#status = :active AND #id = :id");
   assert.deepEqual(history?.Put?.Item, {
     ...activeBet,
@@ -64,6 +64,37 @@ test("atomically moves an active bet to resolved history", async () => {
     endEventTimestamp: "2026-08-20T12:01:00.100Z",
     result: "won",
   });
+  assert.deepEqual(scoreUpdate?.Update, {
+    TableName: "btc-game-players",
+    Key: { playerId: activeBet.playerId },
+    UpdateExpression: "ADD #score :scoreChange",
+    ConditionExpression: "attribute_exists(playerId)",
+    ExpressionAttributeNames: { "#score": "score" },
+    ExpressionAttributeValues: { ":scoreChange": 1 },
+  });
+});
+
+test("a loss subtracts one point in the resolution transaction", async () => {
+  let command: unknown;
+  const client = {
+    send: async (value: unknown) => {
+      command = value;
+      return {};
+    },
+  } as unknown as DynamoDBDocumentClient;
+  const repository = new BetRepository("btc-game-bets", "btc-game-players", client);
+
+  await repository.resolveBetConditionally(activeBet, {
+    endPrice: "99",
+    endEventTimestamp: "2026-08-20T12:01:00.100Z",
+    result: "lost",
+  });
+
+  assert.ok(command instanceof TransactWriteCommand);
+  assert.deepEqual(
+    command.input.TransactItems?.[2]?.Update?.ExpressionAttributeValues,
+    { ":scoreChange": -1 },
+  );
 });
 
 test("a failed active condition is treated as already resolved", async () => {
@@ -77,7 +108,7 @@ test("a failed active condition is treated as already resolved", async () => {
       throw error;
     },
   } as unknown as DynamoDBDocumentClient;
-  const repository = new BetRepository("btc-game-bets", client);
+  const repository = new BetRepository("btc-game-bets", "btc-game-players", client);
 
   assert.equal(
     await repository.resolveBetConditionally(activeBet, {

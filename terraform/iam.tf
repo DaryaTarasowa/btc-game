@@ -42,8 +42,11 @@ resource "aws_iam_role_policy" "create_player_runtime" {
         Resource = "arn:aws:logs:${var.aws_region}:*:log-group:/aws/lambda/btc-game-create-player:*"
       },
       {
-        Effect   = "Allow"
-        Action   = "dynamodb:PutItem"
+        Effect = "Allow"
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem"
+        ]
         Resource = aws_dynamodb_table.players.arn
       }
     ]
