@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createPriceWindow, toPriceResponse } from "./prices.mjs";
+import { createPriceWindow, requestedPriceWindow, toPriceResponse } from "./prices.mjs";
 
 test("maps DynamoDB fields to the public model in chronological order", () => {
   assert.deepEqual(
@@ -49,4 +49,22 @@ test("drops malformed stored records without coercing them", () => {
   ]), {
     prices: [{ price: "101", eventTimestamp: "2026-08-19T01:00:01.000000Z" }],
   });
+});
+
+test("uses a requested historical window with normalized DynamoDB timestamps", () => {
+  assert.deepEqual(requestedPriceWindow({
+    start: "2026-08-19T00:00:00Z",
+    end: "2026-08-19T00:01:01.123456Z",
+  }), {
+    start: "2026-08-19T00:00:00.000000Z",
+    end: "2026-08-19T00:01:01.123456Z",
+  });
+});
+
+test("rejects partial, reversed, invalid, and over-ten-hour windows", () => {
+  assert.equal(requestedPriceWindow({ start: "2026-08-19T00:00:00Z" }), null);
+  assert.equal(requestedPriceWindow({ start: "later", end: "never" }), null);
+  assert.equal(requestedPriceWindow({ start: "2026-08-19T01:00:00Z", end: "2026-08-19T00:00:00Z" }), null);
+  assert.equal(requestedPriceWindow({ start: "2026-08-19T00:00:00Z", end: "2026-08-19T10:00:00.001Z" }), null);
+  assert.equal(requestedPriceWindow({ start: "2026-08-19T00:00:00+01:00", end: "2026-08-19T01:00:00+01:00" }), null);
 });

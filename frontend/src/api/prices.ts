@@ -23,17 +23,27 @@ export function parsePriceResponse(value: unknown): MarketPrice[] {
 
 interface GetRecentPricesOptions {
   signal?: AbortSignal;
+  start?: string;
+  end?: string;
 }
 
 export async function getRecentPrices({
   signal,
+  start,
+  end,
 }: GetRecentPricesOptions = {}): Promise<MarketPrice[]> {
   const endpoint = import.meta.env.VITE_GET_PRICES_URL;
   if (!endpoint) {
     throw new Error("The price-history endpoint is not configured.");
   }
 
-  const response = await fetch(endpoint, { signal });
+  const url = new URL(endpoint);
+  if (start !== undefined || end !== undefined) {
+    if (!start || !end) throw new Error("Both price-history window timestamps are required.");
+    url.searchParams.set("start", start);
+    url.searchParams.set("end", end);
+  }
+  const response = await fetch(url.toString(), { signal });
   if (!response.ok) {
     throw new Error(`Price history could not be loaded (${response.status}).`);
   }

@@ -1,6 +1,6 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, QueryCommand } from "@aws-sdk/lib-dynamodb";
-import { createPriceWindow, toPriceResponse } from "./prices.mjs";
+import { requestedPriceWindow, toPriceResponse } from "./prices.mjs";
 
 const dynamodb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const tableName = process.env.PRICE_HISTORY_TABLE;
@@ -38,8 +38,16 @@ async function queryPriceHistory(start, end) {
   return items;
 }
 
-export const handler = async () => {
-  const { start, end } = createPriceWindow();
+export const handler = async (event) => {
+  const window = requestedPriceWindow(event?.queryStringParameters ?? {});
+  if (!window) {
+    return {
+      statusCode: 400,
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ error: "invalid_price_window" }),
+    };
+  }
+  const { start, end } = window;
   const items = await queryPriceHistory(start, end);
 
   return {

@@ -38,6 +38,11 @@ try {
     [`-chdir=${terraformDirectory}`, "output", "-raw", "create_bet_url"],
     { captureOutput: true },
   ).trim();
+  const priceHistoryUrl = run(
+    "terraform",
+    [`-chdir=${terraformDirectory}`, "output", "-raw", "price_history_url"],
+    { captureOutput: true },
+  ).trim();
   const userPoolId = run("terraform", [`-chdir=${terraformDirectory}`, "output", "-raw", "cognito_user_pool_id"], { captureOutput: true }).trim();
   const userPoolClientId = run("terraform", [`-chdir=${terraformDirectory}`, "output", "-raw", "cognito_user_pool_client_id"], { captureOutput: true }).trim();
 
@@ -51,6 +56,7 @@ try {
       ...process.env,
       VITE_CREATE_PLAYER_URL: createPlayerUrl,
       VITE_CREATE_BET_URL: createBetUrl,
+      VITE_GET_PRICES_URL: priceHistoryUrl,
       VITE_COGNITO_USER_POOL_ID: userPoolId,
       VITE_COGNITO_USER_POOL_CLIENT_ID: userPoolClientId,
     },

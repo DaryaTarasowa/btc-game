@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import { BetCreationError, createBet } from "./bets.mjs";
-import { betStatusQuery } from "./status.mjs";
+import { betStatusQuery, resolvedBetsQuery } from "./status.mjs";
 
 const dynamodb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const priceHistoryTable = process.env.PRICE_HISTORY_TABLE;
@@ -19,6 +19,20 @@ export const handler = async (event) => {
   if (typeof playerId !== "string") return json(401, { error: "unauthorized", message: "Authentication is required." });
   if (event?.requestContext?.http?.method === "GET") {
     const betId = event?.pathParameters?.betId;
+    if (betId === undefined) {
+      const bets = [];
+      let cursor;
+      do {
+        const result = await dynamodb.send(new QueryCommand({
+          TableName: betsTable,
+          ...resolvedBetsQuery(playerId),
+          ExclusiveStartKey: cursor,
+        }));
+        bets.push(...(result.Items ?? []));
+        cursor = result.LastEvaluatedKey;
+      } while (cursor);
+      return json(200, { bets });
+    }
     const query = betStatusQuery(playerId, betId);
     if (!query) return json(400, { error: "invalid_bet_id" });
     let cursor;

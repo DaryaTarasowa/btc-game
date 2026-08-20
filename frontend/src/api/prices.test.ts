@@ -57,6 +57,14 @@ describe("getRecentPrices", () => {
     expect(fetchMock).toHaveBeenCalledWith("https://example.test/prices", { signal: controller.signal });
   });
 
+  it("requests an explicit historical bet window", async () => {
+    vi.stubEnv("VITE_GET_PRICES_URL", "https://example.test/prices");
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ prices: [] }) });
+    vi.stubGlobal("fetch", fetchMock);
+    await getRecentPrices({ start: "2026-08-20T12:00:00Z", end: "2026-08-20T12:01:01Z" });
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("https://example.test/prices?start=2026-08-20T12%3A00%3A00Z&end=2026-08-20T12%3A01%3A01Z");
+  });
+
   it("reports configuration, HTTP, and malformed-response failures", async () => {
     vi.stubEnv("VITE_GET_PRICES_URL", "");
     await expect(getRecentPrices()).rejects.toThrow("endpoint is not configured");

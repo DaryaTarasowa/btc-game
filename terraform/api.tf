@@ -143,6 +143,22 @@ resource "aws_apigatewayv2_route" "get_bet" {
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
+resource "aws_apigatewayv2_route" "list_bets" {
+  api_id             = aws_apigatewayv2_api.player.id
+  route_key          = "GET /bets"
+  target             = "integrations/${aws_apigatewayv2_integration.create_bet.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_lambda_permission" "api_list_bets" {
+  statement_id  = "AllowPlayerApiInvokeListBets"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.create_bet.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.player.execution_arn}/*/GET/bets"
+}
+
 resource "aws_lambda_permission" "api_get_bet" {
   statement_id  = "AllowPlayerApiInvokeGetBet"
   action        = "lambda:InvokeFunction"

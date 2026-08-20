@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { betStatusQuery } from "./status.mjs";
+import { betStatusQuery, resolvedBetsQuery } from "./status.mjs";
 
 test("status lookup is restricted to the authenticated player's partition", () => {
   const query = betStatusQuery("authenticated-player", "bet-1");
@@ -18,4 +18,16 @@ test("status lookup accepts boundary-safe IDs and rejects empty or oversized IDs
   assert.equal(betStatusQuery("authenticated-player", ""), null);
   assert.equal(betStatusQuery("authenticated-player", "A".repeat(129)), null);
   assert.equal(betStatusQuery("authenticated-player", "contains_underscore"), null);
+});
+
+test("history lists only resolved records for the authenticated player newest first", () => {
+  assert.deepEqual(resolvedBetsQuery("authenticated-player"), {
+    KeyConditionExpression: "playerId = :playerId AND begins_with(recordKey, :resolvedPrefix)",
+    ExpressionAttributeValues: {
+      ":playerId": "authenticated-player",
+      ":resolvedPrefix": "BET#",
+    },
+    ScanIndexForward: false,
+    ConsistentRead: true,
+  });
 });
