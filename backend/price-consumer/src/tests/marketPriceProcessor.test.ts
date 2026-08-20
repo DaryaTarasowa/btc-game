@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { PricePublisher } from "./types.js";
+import type { PricePublisher } from "../types.js";
 import {
   MarketPriceProcessor,
   type Logger,
   type MarketBetResolver,
-} from "./marketPriceProcessor.js";
-import type { PriceHistoryRepository } from "./priceHistoryWriter.js";
-import type { MarketPriceEventData } from "./types.js";
+} from "../marketPriceProcessor.js";
+import type { PriceHistoryRepository } from "../priceHistoryWriter.js";
+import type { MarketPriceEventData } from "../types.js";
 
 function marketPrice(
   price: string,

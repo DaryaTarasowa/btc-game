@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import { QueryCommand, TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
-import { BetRepository, type ActiveBet } from "./betRepository.js";
-import { BetDirection, BetResult, BetStatus, ResolutionWriteResult } from "./domain.js";
+import { BetRepository, type ActiveBet } from "../betRepository.js";
+import { BetDirection, BetResult, BetStatus, ResolutionWriteResult } from "../domain.js";
 
 const activeBet: ActiveBet = {
   betId: "bet-1",

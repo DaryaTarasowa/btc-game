@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { MarketPriceGuard } from "./marketPriceGuard.js";
-import type { MarketPriceEventData } from "./types.js";
+import { MarketPriceGuard } from "../marketPriceGuard.js";
+import type { MarketPriceEventData } from "../types.js";
 
 const makeMarketPrice = (eventTimestamp: string, price = "1"): MarketPriceEventData => ({
   product: "BTC-USD",

@@ -6,8 +6,8 @@ import {
   PriceHistoryRepository,
   PRICE_HISTORY_RETENTION_SECONDS,
   toPriceHistoryItem,
-} from "./priceHistoryRepository.js";
-import type { MarketPriceEventData } from "./types.js";
+} from "../priceHistoryRepository.js";
+import type { MarketPriceEventData } from "../types.js";
 
 test("maps a sampled point to the DynamoDB shape with a ten-minute TTL", () => {
   const point: MarketPriceEventData = {

@@ -7,7 +7,7 @@ RUN pnpm install --frozen-lockfile
 COPY tsconfig.json ./
 COPY src ./src
 RUN pnpm build
-RUN rm -f dist/*.test.js
+RUN rm -rf dist/tests
 
 FROM node:22-alpine AS runtime
 
