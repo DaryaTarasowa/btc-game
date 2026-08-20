@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from "vitest";
-import { createBet, getBet } from "./bets";
+import { canReconstructBet, createBet, getBet, getCompletedBets, type ResolvedBet } from "./bets";
 
 vi.mock("aws-amplify/auth", () => ({
   fetchAuthSession: async () => ({ tokens: { idToken: { toString: () => "test-id-token" } } }),
@@ -113,4 +113,24 @@ test("reports other status failures and rejects malformed successful data", asyn
 test("requires a configured betting endpoint", async () => {
   vi.stubEnv("VITE_CREATE_BET_URL", "");
   await expect(getBet("bet-1")).rejects.toThrow("endpoint is not configured");
+});
+
+test("loads the authenticated user's completed bets", async () => {
+  vi.stubEnv("VITE_CREATE_BET_URL", "https://example.test/bets/");
+  const bet = {
+    id: "bet-id", playerId: "subject-1", recordKey: "BET#record", direction: "up", status: "resolved",
+    result: "won", startPrice: "100", endPrice: "101", startEventTimestamp: "2026-08-20T12:00:00Z",
+    resolutionTargetTimestamp: "2026-08-20T12:01:00Z", endEventTimestamp: "2026-08-20T12:01:01Z",
+    createdAt: "2026-08-20T12:00:01Z",
+  };
+  const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ bets: [bet] }) });
+  vi.stubGlobal("fetch", fetchMock);
+  await expect(getCompletedBets()).resolves.toEqual([bet]);
+  expect(fetchMock).toHaveBeenCalledWith("https://example.test/bets", expect.objectContaining({ headers: { authorization: "Bearer test-id-token" } }));
+});
+
+test("reconstruction availability expires ten hours after the bet's source start", () => {
+  const bet = { startEventTimestamp: "2026-08-20T02:00:00Z" } as ResolvedBet;
+  expect(canReconstructBet(bet, Date.parse("2026-08-20T11:59:59.999Z"))).toBe(true);
+  expect(canReconstructBet(bet, Date.parse("2026-08-20T12:00:00Z"))).toBe(false);
 });

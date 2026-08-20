@@ -11,13 +11,14 @@ import {
   type Time,
   type UTCTimestamp,
 } from "lightweight-charts";
-import type { ActiveBet } from "../../api/bets";
+import type { ActiveBet, ResolvedBet } from "../../api/bets";
 import type { MarketPrice } from "../../api/prices";
 import "./PriceChart.css";
 
 interface PriceChartProps {
   prices: MarketPrice[];
-  activeBet?: ActiveBet | null;
+  bet?: ActiveBet | ResolvedBet | null;
+  staticHistory?: boolean;
 }
 
 const priceFormatter = new Intl.NumberFormat(undefined, {
@@ -50,7 +51,7 @@ export function toChartData(prices: MarketPrice[]) {
     }));
 }
 
-export function PriceChart({ prices, activeBet }: PriceChartProps) {
+export function PriceChart({ prices, bet, staticHistory = false }: PriceChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -174,34 +175,40 @@ export function PriceChart({ prices, activeBet }: PriceChartProps) {
     );
 
     markersRef.current?.setMarkers(
-      activeBet
+      bet
         ? [{
-            time: Math.floor(Date.parse(activeBet.startEventTimestamp) / 1_000) as UTCTimestamp,
-            position: activeBet.direction === "up" ? "belowBar" : "aboveBar",
-            color: activeBet.direction === "up" ? "#35d59a" : "#ff6877",
-            shape: activeBet.direction === "up" ? "arrowUp" : "arrowDown",
-            text: `${activeBet.direction.toUpperCase()} · $${Number(activeBet.startPrice).toLocaleString()}`,
-          }]
+            time: Math.floor(Date.parse(bet.startEventTimestamp) / 1_000) as UTCTimestamp,
+            position: bet.direction === "up" ? "belowBar" : "aboveBar",
+            color: bet.direction === "up" ? "#35d59a" : "#ff6877",
+            shape: bet.direction === "up" ? "arrowUp" : "arrowDown",
+            text: `${bet.direction.toUpperCase()} · $${Number(bet.startPrice).toLocaleString()}`,
+          }, ...(bet.status === "resolved" ? [{
+            time: Math.floor(Date.parse(bet.endEventTimestamp) / 1_000) as UTCTimestamp,
+            position: bet.result === "won" ? "aboveBar" as const : "belowBar" as const,
+            color: bet.result === "won" ? "#35d59a" : "#ff6877",
+            shape: "circle" as const,
+            text: `${bet.result.toUpperCase()} · $${Number(bet.endPrice).toLocaleString()}`,
+          }] : [])]
         : [],
     );
 
     series.applyOptions({
-      lineColor: activeBet
-        ? activeBet.direction === "up" ? "#35d59a" : "#ff6877"
+      lineColor: bet
+        ? bet.direction === "up" ? "#35d59a" : "#ff6877"
         : "#f7a52b",
-      priceLineColor: activeBet
-        ? activeBet.direction === "up" ? "#35d59a" : "#ff6877"
+      priceLineColor: bet
+        ? bet.direction === "up" ? "#35d59a" : "#ff6877"
         : "#f7931a",
     });
 
     chart.timeScale().fitContent();
-  }, [activeBet, prices]);
+  }, [bet, prices]);
 
   const latest = prices.at(-1);
 
   return (
     <section
-      className={`price-chart${activeBet ? ` price-chart--active price-chart--${activeBet.direction}` : ""}`}
+      className={`price-chart${bet ? ` price-chart--active price-chart--${bet.direction}` : ""}`}
       aria-label="BTC to USD price chart"
     >
       <header className="price-chart__header">
@@ -209,15 +216,15 @@ export function PriceChart({ prices, activeBet }: PriceChartProps) {
           <p className="price-chart__symbol">
             <span aria-hidden="true">₿</span> BTC / USD
           </p>
-          <p className="price-chart__window">Stored market history · 3 min</p>
-          {activeBet && (
+          <p className="price-chart__window">{staticHistory ? "Stored bet window" : "Stored market history · 3 min"}</p>
+          {bet && (
             <p className="price-chart__bet-state">
-              <span aria-hidden="true" /> {activeBet.direction.toUpperCase()} position active
+              <span aria-hidden="true" /> {bet.status === "resolved" ? `${bet.result.toUpperCase()} ${bet.direction.toUpperCase()} prediction` : `${bet.direction.toUpperCase()} position active`}
             </p>
           )}
         </div>
         <div className="price-chart__latest">
-          <span>Latest price</span>
+          <span>{staticHistory ? "Resolution price" : "Latest price"}</span>
           <strong>
             {latest ? priceFormatter.format(Number(latest.price)) : "—"}
           </strong>

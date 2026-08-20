@@ -98,7 +98,7 @@ export function GamePage() {
             </span>
           </div>
         ) : (
-          <PriceChart prices={prices} activeBet={activeBet} />
+          <PriceChart prices={prices} bet={activeBet} />
         )}
       </div>
     </div>

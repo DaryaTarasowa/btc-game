@@ -8,3 +8,15 @@ export function betStatusQuery(playerId, betId) {
     ConsistentRead: true,
   };
 }
+
+export function resolvedBetsQuery(playerId) {
+  return {
+    KeyConditionExpression: "playerId = :playerId AND begins_with(recordKey, :resolvedPrefix)",
+    ExpressionAttributeValues: {
+      ":playerId": playerId,
+      ":resolvedPrefix": "BET#",
+    },
+    ScanIndexForward: false,
+    ConsistentRead: true,
+  };
+}

@@ -29,6 +29,8 @@ export const resolvedBetSchema = activeBetSchema.omit({ recordKey: true, status:
 export const betStatusSchema = z.discriminatedUnion("status", [activeBetSchema, resolvedBetSchema]);
 export type ResolvedBet = z.infer<typeof resolvedBetSchema>;
 export type BetStatus = z.infer<typeof betStatusSchema>;
+const completedBetsSchema = z.object({ bets: z.array(resolvedBetSchema) });
+export const PRICE_HISTORY_RETENTION_MS = 10 * 60 * 60 * 1_000;
 
 export interface CreateBetInput {
   direction: BetDirection;
@@ -70,4 +72,20 @@ export async function getBet(betId: string, signal?: AbortSignal): Promise<BetSt
   if (response.status === 404 || response.status === 403) throw new BetNotFoundError("Bet is not accessible.");
   if (!response.ok) throw new Error(`Bet status could not be loaded (${response.status}).`);
   return betStatusSchema.parse(await response.json());
+}
+
+export async function getCompletedBets(signal?: AbortSignal): Promise<ResolvedBet[]> {
+  const endpoint = import.meta.env.VITE_CREATE_BET_URL;
+  if (!endpoint) throw new Error("The bet endpoint is not configured.");
+  const response = await fetch(endpoint.replace(/\/$/, ""), {
+    headers: await authHeaders(),
+    signal,
+  });
+  if (!response.ok) throw new Error(`Bet history could not be loaded (${response.status}).`);
+  return completedBetsSchema.parse(await response.json()).bets;
+}
+
+export function canReconstructBet(bet: ResolvedBet, now = Date.now()): boolean {
+  const startTime = Date.parse(bet.startEventTimestamp);
+  return Number.isFinite(startTime) && startTime + PRICE_HISTORY_RETENTION_MS > now;
 }
