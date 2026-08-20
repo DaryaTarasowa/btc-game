@@ -11,9 +11,11 @@ test("creates a bearer header from the Cognito ID token", async () => {
     tokens: { idToken: { toString: () => "id-token" } },
   } as never);
   await expect(authHeaders()).resolves.toEqual({ authorization: "Bearer id-token" });
-  await expect(authHeaders(true)).resolves.toEqual({
-    authorization: "Bearer id-token",
+  await expect(
+    authHeaders({ "content-type": "application/json" }),
+  ).resolves.toEqual({
     "content-type": "application/json",
+    authorization: "Bearer id-token",
   });
 });
 
