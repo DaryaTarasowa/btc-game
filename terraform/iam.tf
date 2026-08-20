@@ -151,6 +151,11 @@ resource "aws_iam_role_policy" "create_bet_runtime" {
         Effect   = "Allow"
         Action   = "dynamodb:PutItem"
         Resource = aws_dynamodb_table.bets.arn
+      },
+      {
+        Effect   = "Allow"
+        Action   = "dynamodb:Query"
+        Resource = aws_dynamodb_table.bets.arn
       }
     ]
   })

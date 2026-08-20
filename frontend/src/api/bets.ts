@@ -19,6 +19,17 @@ export const activeBetSchema = z.object({
 
 export type ActiveBet = z.infer<typeof activeBetSchema>;
 
+export const resolvedBetSchema = activeBetSchema.omit({ recordKey: true, status: true }).extend({
+  recordKey: z.string().startsWith("BET#"),
+  status: z.literal("resolved"),
+  result: z.enum(["won", "lost"]),
+  endPrice: z.string(),
+  endEventTimestamp: z.iso.datetime({ offset: true }),
+});
+export const betStatusSchema = z.discriminatedUnion("status", [activeBetSchema, resolvedBetSchema]);
+export type ResolvedBet = z.infer<typeof resolvedBetSchema>;
+export type BetStatus = z.infer<typeof betStatusSchema>;
+
 export interface CreateBetInput {
   direction: BetDirection;
   point: MarketPrice;
@@ -45,4 +56,18 @@ export async function createBet({ direction, point }: CreateBetInput): Promise<A
   }
 
   return activeBetSchema.parse(await response.json());
+}
+
+export class BetNotFoundError extends Error {}
+
+export async function getBet(betId: string, signal?: AbortSignal): Promise<BetStatus> {
+  const endpoint = import.meta.env.VITE_CREATE_BET_URL;
+  if (!endpoint) throw new Error("The bet endpoint is not configured.");
+  const response = await fetch(`${endpoint.replace(/\/$/, "")}/${encodeURIComponent(betId)}`, {
+    headers: await authHeaders(),
+    signal,
+  });
+  if (response.status === 404 || response.status === 403) throw new BetNotFoundError("Bet is not accessible.");
+  if (!response.ok) throw new Error(`Bet status could not be loaded (${response.status}).`);
+  return betStatusSchema.parse(await response.json());
 }
