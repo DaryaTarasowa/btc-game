@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getRecentPrices, parsePriceResponse } from "./prices";
+import { getRecentPrices, parsePriceResponse } from "@/api/prices";
 
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 

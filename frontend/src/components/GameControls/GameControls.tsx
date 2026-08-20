@@ -1,4 +1,4 @@
-import type { BetDirection } from "../../api/bets";
+import type { BetDirection } from "@/api/bets";
 
 interface GameControlsProps {
   disabled?: boolean;

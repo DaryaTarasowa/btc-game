@@ -1,6 +1,6 @@
 import { afterEach, expect, test, vi } from "vitest";
-import type { ActiveBet, ResolvedBet } from "../api/bets";
-import { clearBetPointer, millisecondsUntilTarget, readBetPointer, statusRefetchInterval, statusStaleTime, storeBetPointer } from "./useBetSynchronization";
+import type { ActiveBet, ResolvedBet } from "@/api/bets";
+import { clearBetPointer, millisecondsUntilTarget, readBetPointer, statusRefetchInterval, statusStaleTime, storeBetPointer } from "@/queries/useBetSynchronization";
 
 const active = {
   status: "active",

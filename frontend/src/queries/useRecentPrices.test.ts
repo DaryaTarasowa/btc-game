@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { appendRecentPrice } from "./useRecentPrices";
+import { appendRecentPrice } from "@/queries/useRecentPrices";
 
 test("appends live prices and retains exactly the latest three wall-clock minutes", () => {
   const now = Date.parse("2026-08-20T12:03:00Z");

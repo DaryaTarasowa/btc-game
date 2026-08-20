@@ -1,7 +1,7 @@
 import { afterEach, expect, test, vi } from "vitest";
-import { deletePlayer, ensurePlayer, getPlayer, isPlayerId, updatePlayerUsername } from "./players";
+import { deletePlayer, ensurePlayer, getPlayer, isPlayerId, updatePlayerUsername } from "@/api/players";
 
-vi.mock("./auth", () => ({ authHeaders: vi.fn(async (json: boolean) => json ? { authorization: "Bearer token", "content-type": "application/json" } : { authorization: "Bearer token" }) }));
+vi.mock("@/api/auth", () => ({ authHeaders: vi.fn(async (json: boolean) => json ? { authorization: "Bearer token", "content-type": "application/json" } : { authorization: "Bearer token" }) }));
 
 const player = {
   playerId: "subject-1",

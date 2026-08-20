@@ -14,7 +14,7 @@ export function isPlayerId(value: unknown): value is string {
   return playerIdSchema.safeParse(value).success;
 }
 
-import { authHeaders } from "./auth";
+import { authHeaders } from "@/api/auth";
 
 function endpoint() {
   const value = import.meta.env.VITE_CREATE_PLAYER_URL;

@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { getRecentPrices } from "../api/prices";
+import { getRecentPrices } from "@/api/prices";
 
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { subscribeToLivePrices } from "../api/livePrices";
-import type { MarketPrice } from "../api/prices";
+import { subscribeToLivePrices } from "@/api/livePrices";
+import type { MarketPrice } from "@/api/prices";
 
 const recentPricesQueryKey = ["prices", "recent"] as const;
 

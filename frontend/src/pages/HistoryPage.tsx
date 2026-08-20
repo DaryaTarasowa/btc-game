@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { canReconstructBet, getCompletedBets, type ResolvedBet } from "../api/bets";
-import { getRecentPrices } from "../api/prices";
-import { PriceChart } from "../components/PriceChart/PriceChart";
-import { usePlayer } from "../context/usePlayer";
+import { betChartWindow, getCompletedBets, reconstructableBetHistory } from "@/api/bets";
+import { getRecentPrices } from "@/api/prices";
+import { PriceChart } from "@/components/PriceChart/PriceChart";
+import { usePlayer } from "@/context/usePlayer";
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, {
   dateStyle: "medium",
@@ -19,14 +19,11 @@ export function HistoryPage() {
     queryFn: ({ signal }) => getCompletedBets(signal),
     enabled: Boolean(playerId),
   });
-  const selectedBet = history.data?.find((bet) => bet.id === selectedBetId) ?? null;
+  const visibleHistory = reconstructableBetHistory(history.data ?? []);
+  const selectedBet = visibleHistory.bets.find((bet) => bet.id === selectedBetId) ?? null;
   const historicalPrices = useQuery({
     queryKey: ["prices", "bet", selectedBet?.id],
-    queryFn: ({ signal }) => getRecentPrices({
-      start: selectedBet!.startEventTimestamp,
-      end: selectedBet!.endEventTimestamp,
-      signal,
-    }),
+    queryFn: ({ signal }) => getRecentPrices({ ...betChartWindow(selectedBet!), signal }),
     enabled: Boolean(selectedBet),
   });
 
@@ -44,26 +41,38 @@ export function HistoryPage() {
           ) : history.data.length === 0 ? (
             <p className="history-page__empty">No completed predictions yet.</p>
           ) : (
-            <div className="history-list">
-              {history.data.map((bet) => {
-                const reconstructable = canReconstructBet(bet);
-                return (
-                  <button
-                    type="button"
-                    className={`history-bet history-bet--${bet.result}${selectedBetId === bet.id ? " history-bet--selected" : ""}`}
-                    key={bet.id}
-                    disabled={!reconstructable}
-                    onClick={() => setSelectedBetId(bet.id)}
-                    title={reconstructable ? "Reconstruct this bet chart" : "Chart data has expired after 10 hours"}
-                  >
-                    <span className="history-bet__result">{bet.result === "won" ? "+1 WON" : "−1 LOST"}</span>
-                    <strong>{bet.direction.toUpperCase()} · ${Number(bet.startPrice).toLocaleString()}</strong>
-                    <small>{dateFormatter.format(new Date(bet.startEventTimestamp))}</small>
-                    {reconstructable && <span className="history-bet__chart" aria-label="Chart available">▥</span>}
-                  </button>
-                );
-              })}
-            </div>
+            <>
+              {visibleHistory.bets.length > 0 ? (
+                <div className="history-list">
+                  {visibleHistory.bets.map((bet) => (
+                    <div
+                      className={`history-bet history-bet--${bet.result}${selectedBetId === bet.id ? " history-bet--selected" : ""}`}
+                      key={bet.id}
+                    >
+                      <span className="history-bet__result">{bet.result === "won" ? "+1 WON" : "−1 LOST"}</span>
+                      <strong>{bet.direction.toUpperCase()} · ${Number(bet.startPrice).toLocaleString()}</strong>
+                      <small>{dateFormatter.format(new Date(bet.startEventTimestamp))}</small>
+                      <button
+                        type="button"
+                        className="history-bet__chart"
+                        aria-label="Show price chart"
+                        title="Show price chart"
+                        onClick={() => setSelectedBetId(bet.id)}
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M4 19V5M4 19h16M7 15l3-4 3 2 5-7" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="history-page__empty">No bets with available price charts.</p>
+              )}
+              {visibleHistory.olderCount > 0 && (
+                <p className="history-page__older">…and {visibleHistory.olderCount} older {visibleHistory.olderCount === 1 ? "bet" : "bets"}.</p>
+              )}
+            </>
           )}
           {selectedBet && (
             <div className="history-chart">
@@ -74,7 +83,7 @@ export function HistoryPage() {
               ) : historicalPrices.data.length === 0 ? (
                 <p className="history-page__empty">Stored market data is no longer available for this bet.</p>
               ) : (
-                <PriceChart prices={historicalPrices.data} bet={selectedBet as ResolvedBet} staticHistory />
+                <PriceChart prices={historicalPrices.data} bet={selectedBet} staticHistory />
               )}
             </div>
           )}

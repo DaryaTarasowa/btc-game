@@ -1,6 +1,6 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { fetchAuthSession } from "aws-amplify/auth";
-import { authHeaders } from "./auth";
+import { authHeaders } from "@/api/auth";
 
 vi.mock("aws-amplify/auth", () => ({ fetchAuthSession: vi.fn() }));
 

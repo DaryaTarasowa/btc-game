@@ -1,7 +1,7 @@
 import { createRootRoute, createRoute, createRouter } from "@tanstack/react-router";
-import { AppLayout } from "./components/AppLayout";
-import { GamePage } from "./pages/GamePage";
-import { HistoryPage } from "./pages/HistoryPage";
+import { AppLayout } from "@/components/AppLayout";
+import { GamePage } from "@/pages/GamePage";
+import { HistoryPage } from "@/pages/HistoryPage";
 
 const rootRoute = createRootRoute({ component: AppLayout });
 const gameRoute = createRoute({

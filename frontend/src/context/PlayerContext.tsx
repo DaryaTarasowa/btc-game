@@ -1,6 +1,6 @@
 import { createContext, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { deleteUser, getCurrentUser, signIn, signOut, signUp, updateUserAttributes } from "aws-amplify/auth";
-import { deletePlayer, ensurePlayer, updatePlayerUsername, type Player } from "../api/players";
+import { deletePlayer, ensurePlayer, updatePlayerUsername, type Player } from "@/api/players";
 
 export interface PlayerContextValue {
   playerId: string | null;
