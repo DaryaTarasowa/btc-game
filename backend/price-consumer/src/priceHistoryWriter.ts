@@ -34,9 +34,10 @@ export class PriceHistoryWriter {
 
   public process(
     marketPrice: MarketPriceEventData,
+    forceStore = false,
   ): Promise<MarketPriceProcessingResult> {
     const operation = this.queue.then(async () => {
-      if (this.lastStoredSourceTimestamp) {
+      if (!forceStore && this.lastStoredSourceTimestamp) {
         const currentTime = toEpochMilliseconds(marketPrice.eventTimestamp);
 
         const lastStoredTime = toEpochMilliseconds(
@@ -49,7 +50,7 @@ export class PriceHistoryWriter {
       }
 
       await this.repository.put(marketPrice);
-      this.lastStoredSourceTimestamp = marketPrice.eventTimestamp;
+      if (!forceStore) this.lastStoredSourceTimestamp = marketPrice.eventTimestamp;
       return "stored";
     });
 

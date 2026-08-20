@@ -8,7 +8,7 @@ import type { MarketPriceEventData } from "./types.js";
 import type { LogLevel } from "./utils.js";
 
 export interface MarketBetResolver {
-  process(marketPrice: MarketPriceEventData): void;
+  process(marketPrice: MarketPriceEventData): boolean;
   stop(): Promise<void>;
 }
 
@@ -66,10 +66,10 @@ export class MarketPriceProcessor {
       }
     }
 
-    this.betResolver.process(marketPrice);
-    if (guardResult === "unchanged_price") return;
+    const resolutionScheduled = this.betResolver.process(marketPrice);
+    if (guardResult === "unchanged_price" && !resolutionScheduled) return;
 
-    const processing = this.processAccepted(marketPrice);
+    const processing = this.processAccepted(marketPrice, resolutionScheduled);
     this.pending.add(processing);
     void processing.finally(() => this.pending.delete(processing));
   }
@@ -81,11 +81,12 @@ export class MarketPriceProcessor {
 
   private async processAccepted(
     marketPrice: MarketPriceEventData,
+    forceHistoryWrite = false,
   ): Promise<void> {
     let result: "stored" | "skipped";
 
     try {
-      result = await this.writer.process(marketPrice);
+      result = await this.writer.process(marketPrice, forceHistoryWrite);
     } catch (error: unknown) {
       this.writeFailed = true;
       this.log("error", "price_history_write_failed", {

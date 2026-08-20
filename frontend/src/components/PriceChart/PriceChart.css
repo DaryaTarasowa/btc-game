@@ -8,13 +8,15 @@
   transition: border-color 220ms ease, box-shadow 220ms ease, background 220ms ease;
 }
 
-.price-chart--up {
+.price-chart--up,
+.price-chart--won {
   border-color: rgba(53, 213, 154, 0.48);
   background: linear-gradient(150deg, rgba(17, 49, 42, 0.96), rgba(12, 16, 27, 0.96) 58%);
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.32), 0 0 38px rgba(53, 213, 154, 0.12);
 }
 
-.price-chart--down {
+.price-chart--down,
+.price-chart--lost {
   border-color: rgba(255, 104, 119, 0.48);
   background: linear-gradient(150deg, rgba(55, 25, 35, 0.96), rgba(12, 16, 27, 0.96) 58%);
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.32), 0 0 38px rgba(255, 104, 119, 0.12);
@@ -37,14 +39,38 @@
 .price-chart__window { margin-top: 6px; color: #77839e; font-size: 0.78rem; }
 .price-chart__bet-state { margin: 8px 0 0; color: #cbd5e1; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
 .price-chart__bet-state span { display: inline-block; width: 7px; height: 7px; margin-right: 4px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 0 currentColor; animation: bet-pulse 1.6s infinite; }
-.price-chart--up .price-chart__bet-state { color: #35d59a; }
-.price-chart--down .price-chart__bet-state { color: #ff6877; }
+.price-chart--up .price-chart__bet-state,
+.price-chart--won .price-chart__bet-state { color: #35d59a; }
+.price-chart--down .price-chart__bet-state,
+.price-chart--lost .price-chart__bet-state { color: #ff6877; }
 @keyframes bet-pulse { 70% { box-shadow: 0 0 0 8px transparent; } }
 .price-chart__latest { text-align: right; }
 .price-chart__latest span { display: block; color: #77839e; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; }
 .price-chart__latest strong { display: block; margin-top: 4px; color: #fff; font-size: clamp(1.35rem, 3vw, 2rem); font-variant-numeric: tabular-nums; }
 
 .price-chart__canvas { position: relative; width: 100%; min-height: 390px; }
+.price-chart__time-guide {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 1px dotted currentColor;
+  opacity: 0.5;
+  pointer-events: none;
+}
+.price-chart__resolution-dot {
+  position: absolute;
+  z-index: 3;
+  width: 11px;
+  height: 11px;
+  border: 2px solid #101521;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 2px currentColor;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
 .price-chart__tooltip {
   position: absolute;
   z-index: 2;

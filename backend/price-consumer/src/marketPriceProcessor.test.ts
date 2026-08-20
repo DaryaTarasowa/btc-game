@@ -51,9 +51,11 @@ class FakePublisher implements PricePublisher {
 class FakeBetResolver implements MarketBetResolver {
   public readonly events: MarketPriceEventData[] = [];
   public stopped = false;
+  public resolutionEventTimestamp: string | undefined;
 
-  public process(value: MarketPriceEventData): void {
+  public process(value: MarketPriceEventData): boolean {
     this.events.push(value);
+    return value.eventTimestamp === this.resolutionEventTimestamp;
   }
 
   public async stop(): Promise<void> {
@@ -149,6 +151,36 @@ test("does not publish a point skipped by the history sampler", async () => {
   assert.deepEqual(
     betResolver.events.map((value) => value.price),
     ["100", "101"],
+  );
+});
+
+test("stores and publishes the exact event selected for bet resolution even inside the sampling interval", async () => {
+  const { processor, repository, publisher, betResolver } = await createProcessor();
+  betResolver.resolutionEventTimestamp = "2026-08-19T10:00:00.500Z";
+  processor.process(marketPrice("100", "2026-08-19T10:00:00.000Z"));
+  processor.process(marketPrice("101", "2026-08-19T10:00:00.500Z"));
+  await processor.stop();
+
+  assert.deepEqual(
+    repository.writes.map((value) => value.eventTimestamp),
+    ["2026-08-19T10:00:00.000Z", "2026-08-19T10:00:00.500Z"],
+  );
+  assert.deepEqual(
+    publisher.published.map((value) => value.eventTimestamp),
+    ["2026-08-19T10:00:00.000Z", "2026-08-19T10:00:00.500Z"],
+  );
+});
+
+test("stores an unchanged-price event when that exact event is selected for resolution", async () => {
+  const { processor, repository, betResolver } = await createProcessor();
+  betResolver.resolutionEventTimestamp = "2026-08-19T10:00:00.500Z";
+  processor.process(marketPrice("101", "2026-08-19T10:00:00.000Z"));
+  processor.process(marketPrice("101", "2026-08-19T10:00:00.500Z"));
+  await processor.stop();
+
+  assert.deepEqual(
+    repository.writes.map((value) => value.eventTimestamp),
+    ["2026-08-19T10:00:00.000Z", "2026-08-19T10:00:00.500Z"],
   );
 });
 

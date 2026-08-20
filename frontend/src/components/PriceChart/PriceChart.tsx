@@ -36,12 +36,20 @@ const timeFormatter = new Intl.DateTimeFormat(undefined, {
   second: "2-digit",
 });
 
-export function toChartData(prices: MarketPrice[]) {
+export function toChartData(prices: MarketPrice[], authoritativeTimestamps: string[] = []) {
   const points = new Map<number, MarketPrice>();
+  const authoritative = new Set(authoritativeTimestamps);
 
   for (const price of prices) {
     const time = Math.floor(Date.parse(price.eventTimestamp) / 1000);
-    points.set(time, price);
+    const existing = points.get(time);
+    if (
+      !existing ||
+      authoritative.has(price.eventTimestamp) ||
+      !authoritative.has(existing.eventTimestamp)
+    ) {
+      points.set(time, price);
+    }
   }
 
   return [...points.entries()]
@@ -62,18 +70,37 @@ export function chartHeadlinePrice(
   return prices.at(-1)?.price;
 }
 
-export function resolutionPriceLineOptions(
+function resultColor(bet: ResolvedBet) {
+  return bet.result === "won" ? "#35d59a" : "#ff6877";
+}
+
+export function betGraphColor(bet: ActiveBet | ResolvedBet) {
+  return bet.direction === "up" ? "#35d59a" : "#ff6877";
+}
+
+export function staticGraphFillColors(bet: ResolvedBet) {
+  return bet.direction === "up"
+    ? { top: "rgba(53, 213, 154, 0.28)", bottom: "rgba(53, 213, 154, 0.015)" }
+    : { top: "rgba(255, 104, 119, 0.28)", bottom: "rgba(255, 104, 119, 0.015)" };
+}
+
+export function referencePriceLineOptions(
   bet: ActiveBet | ResolvedBet | null | undefined,
   staticHistory: boolean,
 ) {
-  if (!staticHistory || bet?.status !== "resolved") return null;
+  if (!staticHistory || bet?.status !== "resolved") return [];
+  const color = resultColor(bet);
+  return [
+    { price: Number(bet.startPrice), color, lineWidth: 1 as const, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: "Placed" },
+    { price: Number(bet.endPrice), color, lineWidth: 1 as const, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: "Resolved" },
+  ];
+}
+
+export function betGuideColors(bet: ActiveBet | ResolvedBet) {
+  const annotationColor = bet.status === "resolved" ? resultColor(bet) : betGraphColor(bet);
   return {
-    price: Number(bet.endPrice),
-    color: bet.result === "won" ? "#35d59a" : "#ff6877",
-    lineWidth: 1 as const,
-    lineStyle: LineStyle.Dashed,
-    axisLabelVisible: true,
-    title: "Resolved",
+    creation: annotationColor,
+    resolution: bet.status === "resolved" ? annotationColor : null,
   };
 }
 
@@ -83,8 +110,37 @@ export function PriceChart({ prices, bet, staticHistory = false }: PriceChartPro
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Area"> | null>(null);
   const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
-  const resolutionPriceLineRef = useRef<IPriceLine | null>(null);
+  const referencePriceLinesRef = useRef<IPriceLine[]>([]);
   const timestampsRef = useRef(new Map<number, string>());
+  const creationGuideRef = useRef<HTMLDivElement>(null);
+  const resolutionGuideRef = useRef<HTMLDivElement>(null);
+  const resolutionDotRef = useRef<HTMLDivElement>(null);
+  const betRef = useRef(bet);
+  const staticHistoryRef = useRef(staticHistory);
+  betRef.current = bet;
+  staticHistoryRef.current = staticHistory;
+
+  function positionHistoryGuides() {
+    const chart = chartRef.current;
+    const series = seriesRef.current;
+    const currentBet = betRef.current;
+    if (!chart || !series || !staticHistoryRef.current || currentBet?.status !== "resolved") return;
+
+    const creationX = chart.timeScale().timeToCoordinate(
+      Math.floor(Date.parse(currentBet.startEventTimestamp) / 1_000) as UTCTimestamp,
+    );
+    const resolutionX = chart.timeScale().timeToCoordinate(
+      Math.floor(Date.parse(currentBet.endEventTimestamp) / 1_000) as UTCTimestamp,
+    );
+    const resolutionY = series.priceToCoordinate(Number(currentBet.endPrice));
+
+    if (creationGuideRef.current && creationX !== null) creationGuideRef.current.style.left = `${creationX}px`;
+    if (resolutionGuideRef.current && resolutionX !== null) resolutionGuideRef.current.style.left = `${resolutionX}px`;
+    if (resolutionDotRef.current && resolutionX !== null && resolutionY !== null) {
+      resolutionDotRef.current.style.left = `${resolutionX}px`;
+      resolutionDotRef.current.style.top = `${resolutionY}px`;
+    }
+  }
 
   useEffect(() => {
     const container = containerRef.current;
@@ -169,18 +225,22 @@ export function PriceChart({ prices, bet, staticHistory = false }: PriceChartPro
     });
 
     const resizeObserver = new ResizeObserver(([entry]) => {
-      if (entry)
+      if (entry) {
         chart.applyOptions({ width: Math.floor(entry.contentRect.width) });
+        requestAnimationFrame(positionHistoryGuides);
+      }
     });
     resizeObserver.observe(container);
+    chart.timeScale().subscribeVisibleLogicalRangeChange(positionHistoryGuides);
 
     return () => {
+      chart.timeScale().unsubscribeVisibleLogicalRangeChange(positionHistoryGuides);
       resizeObserver.disconnect();
       chart.remove();
       chartRef.current = null;
       seriesRef.current = null;
       markersRef.current = null;
-      resolutionPriceLineRef.current = null;
+      referencePriceLinesRef.current = [];
     };
   }, []);
 
@@ -189,7 +249,10 @@ export function PriceChart({ prices, bet, staticHistory = false }: PriceChartPro
     const chart = chartRef.current;
     if (!series || !chart) return;
 
-    const chartData = toChartData(prices);
+    const authoritativeTimestamps = staticHistory && bet?.status === "resolved"
+      ? [bet.startEventTimestamp, bet.endEventTimestamp]
+      : [];
+    const chartData = toChartData(prices, authoritativeTimestamps);
 
     timestampsRef.current = new Map(
       chartData.map((point) => [point.time, point.eventTimestamp]),
@@ -202,53 +265,53 @@ export function PriceChart({ prices, bet, staticHistory = false }: PriceChartPro
       })),
     );
 
+    const guideColors = bet ? betGuideColors(bet) : null;
     markersRef.current?.setMarkers(
       bet
         ? [{
             time: Math.floor(Date.parse(bet.startEventTimestamp) / 1_000) as UTCTimestamp,
             position: bet.direction === "up" ? "belowBar" : "aboveBar",
-            color: bet.direction === "up" ? "#35d59a" : "#ff6877",
+            color: staticHistory && guideColors ? guideColors.creation : betGraphColor(bet),
             shape: bet.direction === "up" ? "arrowUp" : "arrowDown",
             text: `${bet.direction.toUpperCase()} · $${Number(bet.startPrice).toLocaleString()}`,
-          }, ...(bet.status === "resolved" ? [{
-            time: Math.floor(Date.parse(bet.endEventTimestamp) / 1_000) as UTCTimestamp,
-            position: bet.result === "won" ? "aboveBar" as const : "belowBar" as const,
-            color: bet.result === "won" ? "#35d59a" : "#ff6877",
-            shape: "circle" as const,
-            text: `${bet.result.toUpperCase()} · $${Number(bet.endPrice).toLocaleString()}`,
-          }] : [])]
+          }]
         : [],
     );
 
-    if (resolutionPriceLineRef.current) {
-      series.removePriceLine(resolutionPriceLineRef.current);
-      resolutionPriceLineRef.current = null;
-    }
-
-    const resolutionLine = resolutionPriceLineOptions(bet, staticHistory);
-    if (resolutionLine) {
-      resolutionPriceLineRef.current = series.createPriceLine(resolutionLine);
-    }
+    for (const line of referencePriceLinesRef.current) series.removePriceLine(line);
+    const referenceLines = referencePriceLineOptions(bet, staticHistory);
+    referencePriceLinesRef.current = referenceLines.map((line) => series.createPriceLine(line));
+    const staticFill = staticHistory && bet?.status === "resolved" ? staticGraphFillColors(bet) : null;
 
     series.applyOptions({
       lineColor: bet
-        ? bet.direction === "up" ? "#35d59a" : "#ff6877"
+        ? betGraphColor(bet)
         : "#f7a52b",
       priceLineColor: bet
-        ? bet.direction === "up" ? "#35d59a" : "#ff6877"
+        ? betGraphColor(bet)
         : "#f7931a",
-      priceLineVisible: !resolutionLine,
-      lastValueVisible: !resolutionLine,
+      priceLineVisible: referenceLines.length === 0,
+      lastValueVisible: referenceLines.length === 0,
+      topColor: staticFill?.top ?? "rgba(247, 147, 26, 0.34)",
+      bottomColor: staticFill?.bottom ?? "rgba(247, 147, 26, 0.015)",
+      crosshairMarkerBackgroundColor: staticHistory && bet ? betGraphColor(bet) : "#f7931a",
     });
 
     chart.timeScale().fitContent();
+    const animationFrame = requestAnimationFrame(positionHistoryGuides);
+    return () => cancelAnimationFrame(animationFrame);
   }, [bet, prices, staticHistory]);
 
   const headlinePrice = chartHeadlinePrice(prices, bet, staticHistory);
+  const guideColors = bet ? betGuideColors(bet) : null;
 
   return (
     <section
-      className={`price-chart${bet ? ` price-chart--active price-chart--${bet.direction}` : ""}`}
+      className={`price-chart${bet
+        ? staticHistory && bet.status === "resolved"
+          ? ` price-chart--resolved price-chart--${bet.result}`
+          : ` price-chart--active price-chart--${bet.direction}`
+        : ""}`}
       aria-label="BTC to USD price chart"
     >
       <header className="price-chart__header">
@@ -272,6 +335,28 @@ export function PriceChart({ prices, bet, staticHistory = false }: PriceChartPro
       </header>
       <div className="price-chart__canvas" ref={containerRef}>
         <div className="price-chart__tooltip" ref={tooltipRef} hidden />
+        {staticHistory && bet?.status === "resolved" && guideColors && (
+          <>
+            <div
+              className="price-chart__time-guide"
+              ref={creationGuideRef}
+              style={{ color: guideColors.creation }}
+              aria-hidden="true"
+            />
+            <div
+              className="price-chart__time-guide"
+              ref={resolutionGuideRef}
+              style={{ color: guideColors.resolution ?? undefined }}
+              aria-hidden="true"
+            />
+            <div
+              className="price-chart__resolution-dot"
+              ref={resolutionDotRef}
+              style={{ color: guideColors.resolution ?? undefined }}
+              aria-hidden="true"
+            />
+          </>
+        )}
       </div>
     </section>
   );

@@ -71,7 +71,7 @@ async function load(repository: FakeRepository, activeBet = bet()) {
 test("event before target does not resolve", async () => {
   const repository = new FakeRepository();
   const value = await load(repository);
-  value.process(event("101", "2026-08-20T12:00:59.999Z"));
+  assert.equal(value.process(event("101", "2026-08-20T12:00:59.999Z")), false);
   await value.stop();
   assert.equal(repository.resolutions.length, 0);
 });
@@ -79,9 +79,18 @@ test("event before target does not resolve", async () => {
 test("event exactly at target with different price resolves", async () => {
   const repository = new FakeRepository();
   const value = await load(repository);
-  value.process(event("101", TARGET));
+  assert.equal(value.process(event("101", TARGET)), true);
   await value.stop();
   assert.equal(repository.resolutions[0]?.resolution.endEventTimestamp, TARGET);
+});
+
+test("only the exact event that establishes the retained resolution is reported", async () => {
+  const repository = new FakeRepository();
+  const value = await load(repository);
+  assert.equal(value.process(event("101", TARGET)), true);
+  assert.equal(value.process(event("102", "2026-08-20T12:01:00.100Z")), false);
+  await value.stop();
+  assert.equal(repository.resolutions[0]?.resolution.endPrice, "101");
 });
 
 test("event after target with different price resolves", async () => {
