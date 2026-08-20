@@ -1,5 +1,5 @@
 export interface MarketPriceEventData {
-  product: "BTC-USD";
+  product: string;
   price: string;
   eventTimestamp: string;
   receivedTimestamp: string;
@@ -8,6 +8,7 @@ export interface MarketPriceEventData {
 }
 
 export interface LiveMarketPrice {
+  product: string;
   price: string;
   eventTimestamp: string;
 }

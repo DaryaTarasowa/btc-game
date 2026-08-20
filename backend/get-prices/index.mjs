@@ -4,8 +4,9 @@ import { requestedPriceWindow, toPriceResponse } from "./prices.mjs";
 
 const dynamodb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const tableName = process.env.PRICE_HISTORY_TABLE;
+const products = new Set((process.env.MARKET_PRODUCTS ?? "").split(",").map((product) => product.trim()).filter(Boolean));
 
-async function queryPriceHistory(start, end) {
+async function queryPriceHistory(product, start, end) {
   const items = [];
   let exclusiveStartKey;
 
@@ -21,7 +22,7 @@ async function queryPriceHistory(start, end) {
           "#price": "price",
         },
         ExpressionAttributeValues: {
-          ":product": "BTC-USD",
+          ":product": product,
           ":start": start,
           ":end": end,
         },
@@ -39,6 +40,14 @@ async function queryPriceHistory(start, end) {
 }
 
 export const handler = async (event) => {
+  const product = event?.queryStringParameters?.product;
+  if (typeof product !== "string" || !products.has(product)) {
+    return {
+      statusCode: 400,
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ error: "unsupported_product" }),
+    };
+  }
   const window = requestedPriceWindow(event?.queryStringParameters ?? {});
   if (!window) {
     return {
@@ -48,11 +57,11 @@ export const handler = async (event) => {
     };
   }
   const { start, end } = window;
-  const items = await queryPriceHistory(start, end);
+  const items = await queryPriceHistory(product, start, end);
 
   return {
     statusCode: 200,
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(toPriceResponse(items)),
+    body: JSON.stringify(toPriceResponse(product, items)),
   };
 };

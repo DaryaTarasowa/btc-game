@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const marketPriceSchema = z.object({
+  product: z.string().min(1),
   price: z.string().refine(
     (value) => {
       const price = Number(value);
@@ -22,22 +23,25 @@ export function parsePriceResponse(value: unknown): MarketPrice[] {
 }
 
 interface GetRecentPricesOptions {
+  product: string;
   signal?: AbortSignal;
   start?: string;
   end?: string;
 }
 
 export async function getRecentPrices({
+  product,
   signal,
   start,
   end,
-}: GetRecentPricesOptions = {}): Promise<MarketPrice[]> {
+}: GetRecentPricesOptions): Promise<MarketPrice[]> {
   const endpoint = import.meta.env.VITE_GET_PRICES_URL;
   if (!endpoint) {
     throw new Error("The price-history endpoint is not configured.");
   }
 
   const url = new URL(endpoint);
+  url.searchParams.set("product", product);
   if (start !== undefined || end !== undefined) {
     if (!start || !end) throw new Error("Both price-history window timestamps are required.");
     url.searchParams.set("start", start);

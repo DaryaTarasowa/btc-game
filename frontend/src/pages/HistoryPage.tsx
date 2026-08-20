@@ -5,6 +5,7 @@ import { getCompletedBets, reconstructableBetHistory } from "@/api/bets";
 import { PriceChart } from "@/components/PriceChart/PriceChart";
 import { usePlayer } from "@/context/usePlayer";
 import { useResolvedBetChart } from "@/queries/useResolvedBetChart";
+import { BetResult } from "@/domain/bets";
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, {
   dateStyle: "medium",
@@ -42,24 +43,39 @@ export function HistoryPage() {
               {visibleHistory.bets.length > 0 ? (
                 <div className="mt-8 grid gap-2.5">
                   {visibleHistory.bets.map((bet) => (
-                    <div
-                      className={`relative grid w-full grid-cols-[100px_1fr_auto_28px] items-center gap-3.5 rounded-[14px] border bg-[#080b12]/50 px-4.5 py-4 text-left text-slate-200 max-[820px]:grid-cols-[80px_1fr_24px] ${selectedBetId === bet.betId ? "border-bitcoin" : "border-white/10"}`}
-                      key={bet.betId}
-                    >
-                      <span className={`text-xs font-black tracking-[0.08em] ${bet.result === "won" ? "text-up" : "text-down"}`}>{bet.result === "won" ? "+1 WON" : "−1 LOST"}</span>
-                      <strong>{bet.direction.toUpperCase()} · ${Number(bet.startPrice).toLocaleString()}</strong>
-                      <small className="text-[#8490a9] max-[820px]:col-start-2">{dateFormatter.format(new Date(bet.startEventTimestamp))}</small>
-                      <button
-                        type="button"
-                        className="grid size-[34px] min-w-0 cursor-pointer place-items-center rounded-[9px] border-0 bg-bitcoin/10 p-[7px] text-bitcoin transition hover:bg-bitcoin hover:text-[#171008] focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-white max-[820px]:col-start-3 max-[820px]:row-start-1"
-                        aria-label="Show price chart"
-                        title="Show price chart"
-                        onClick={() => setSelectedBetId(bet.betId)}
+                    <div className="grid gap-2.5" key={bet.betId}>
+                      <div
+                        className={`relative grid w-full grid-cols-[100px_1fr_auto_28px] items-center gap-3.5 rounded-[14px] border bg-[#080b12]/50 px-4.5 py-4 text-left text-slate-200 max-[820px]:grid-cols-[80px_1fr_24px] ${selectedBetId === bet.betId ? "border-bitcoin" : "border-white/10"}`}
                       >
-                        <svg className="size-full fill-none stroke-current stroke-2 [stroke-linecap:round] [stroke-linejoin:round]" viewBox="0 0 24 24" aria-hidden="true">
-                          <path d="M4 19V5M4 19h16M7 15l3-4 3 2 5-7" />
-                        </svg>
-                      </button>
+                        <span className={`text-xs font-black tracking-[0.08em] ${bet.result === BetResult.Won ? "text-up" : "text-down"}`}>{bet.result === BetResult.Won ? "+1 WON" : "−1 LOST"}</span>
+                        <strong>{bet.direction.toUpperCase()} · ${Number(bet.startPrice).toLocaleString()}</strong>
+                        <small className="text-[#8490a9] max-[820px]:col-start-2">{dateFormatter.format(new Date(bet.startEventTimestamp))}</small>
+                        <button
+                          type="button"
+                          className="grid size-[34px] min-w-0 cursor-pointer place-items-center rounded-[9px] border-0 bg-bitcoin/10 p-[7px] text-bitcoin transition hover:bg-bitcoin hover:text-[#171008] focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-white max-[820px]:col-start-3 max-[820px]:row-start-1"
+                          aria-label={selectedBetId === bet.betId ? "Hide price chart" : "Show price chart"}
+                          title={selectedBetId === bet.betId ? "Hide price chart" : "Show price chart"}
+                          aria-expanded={selectedBetId === bet.betId}
+                          onClick={() => setSelectedBetId((current) => current === bet.betId ? null : bet.betId)}
+                        >
+                          <svg className="size-full fill-none stroke-current stroke-2 [stroke-linecap:round] [stroke-linejoin:round]" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M4 19V5M4 19h16M7 15l3-4 3 2 5-7" />
+                          </svg>
+                        </button>
+                      </div>
+                      {selectedBetId === bet.betId && selectedBet && (
+                        <div className="mb-4 text-left">
+                          {historicalPrices.isPending ? (
+                            <p className="my-6 text-center text-[#8490a9]">Reconstructing stored market window…</p>
+                          ) : historicalPrices.isError ? (
+                            <p className="my-6 text-center text-down">{historicalPrices.error.message}</p>
+                          ) : historicalPrices.data.length === 0 ? (
+                            <p className="my-6 text-center text-[#8490a9]">Stored market data is no longer available for this bet.</p>
+                          ) : (
+                            <PriceChart prices={historicalPrices.data} bet={selectedBet} staticHistory />
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -70,19 +86,6 @@ export function HistoryPage() {
                 <p className="mt-4.5 text-sm text-[#8490a9]">…and {visibleHistory.olderCount} older {visibleHistory.olderCount === 1 ? "bet" : "bets"}.</p>
               )}
             </>
-          )}
-          {selectedBet && (
-            <div className="mt-7 text-left">
-              {historicalPrices.isPending ? (
-                <p className={emptyClass}>Reconstructing stored market window…</p>
-              ) : historicalPrices.isError ? (
-                <p className="mt-5.5 text-down">{historicalPrices.error.message}</p>
-              ) : historicalPrices.data.length === 0 ? (
-                <p className={emptyClass}>Stored market data is no longer available for this bet.</p>
-              ) : (
-                <PriceChart prices={historicalPrices.data} bet={selectedBet} staticHistory />
-              )}
-            </div>
           )}
         </>
       ) : (

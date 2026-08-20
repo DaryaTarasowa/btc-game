@@ -13,6 +13,8 @@ A small serverless BTC prediction game deployed on AWS.
 
 The application is deployed to `eu-central-1`.
 
+Market products are configured once through Terraform's `market_products`, `default_market_product`, `coinbase_channels`, and `live_price_channel_prefix` variables. The consumer subscribes to every configured product, while the frontend market context owns the currently selected product. Changing that context value switches the history query, live AppSync channel, bet product, and chart label together; bets are resolved only by events for their stored product.
+
 ## User accounts
 
 Amazon Cognito provides email/password registration, login, logout, and durable sessions. Registrations are automatically confirmed by a minimal pre-sign-up trigger, so this demo does not require an email confirmation-code step. The Cognito `sub` claim is the authoritative player ID; API Gateway verifies the JWT before protected player and bet routes run. DynamoDB stores the player's username and score. The frontend never creates or persists its own player identity.

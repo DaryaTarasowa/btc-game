@@ -1,6 +1,6 @@
-# Coinbase BTC-USD price consumer
+# Coinbase market-price consumer
 
-This standalone TypeScript service connects to Coinbase Exchange's public WebSocket feed and subscribes to the `ticker` and `heartbeat` channels for `BTC-USD`.
+This standalone TypeScript service connects to Coinbase Exchange's public WebSocket feed and subscribes to the configured channels and products.
 
 The raw application stream contains every normalized, strictly source-time-ordered **changed-price** event. It is kept separate for future consumers such as bet resolution. Equal or older source timestamps are dropped before both raw application processing and history processing.
 
@@ -8,7 +8,7 @@ Chart history is a derived stream. The service stores an event when its Coinbase
 
 Prices remain decimal strings so JavaScript floating-point conversion cannot discard precision. Sampling and the ten-minute TTL use Coinbase `sourceTimestamp`, which represents market-event time. `receivedTimestamp` is local processing time and can shift because of network latency or reconnects, so it is not used to build the chart timeline.
 
-At startup, the service queries DynamoDB once for the newest `BTC-USD` item and initializes the in-memory sampling timestamp. It does not read DynamoDB for each market event. The timestamp advances only after a successful write; a failed write is logged and leaves a later eligible event able to retry naturally.
+At startup, the service queries DynamoDB once per configured product and initializes independent in-memory sampling timestamps. It does not read DynamoDB for each market event. A product's timestamp advances only after a successful write; a failed write leaves a later eligible event able to retry naturally.
 
 Set `PRICE_HISTORY_TABLE` to the DynamoDB table name. AWS credentials and region use the normal AWS SDK credential chain.
 

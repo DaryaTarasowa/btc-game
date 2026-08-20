@@ -6,6 +6,10 @@ import {
 } from "./priceHistoryWriter.js";
 import type { MarketPriceEventData } from "./types.js";
 import type { LogLevel } from "./utils.js";
+import {
+  MarketPriceGuardResult,
+  MarketPriceProcessingResult,
+} from "./domain.js";
 
 export interface MarketBetResolver {
   process(marketPrice: MarketPriceEventData): boolean;
@@ -20,7 +24,7 @@ export type Logger = (
 ) => void;
 
 export interface MarketPriceProcessorSettings {
-  product: "BTC-USD"; //TODO get it from settings, make generic for other products
+  product: string;
   repository: PriceHistoryRepository;
   livePricePublisher: PricePublisher;
   betResolver: MarketBetResolver;
@@ -65,15 +69,19 @@ export class MarketPriceProcessor {
     if (this.stopping) return;
 
     const guardResult = this.guard.evaluate(marketPrice);
-    if (guardResult !== "accepted") {
-      if (guardResult === "non_increasing_event_timestamp") {
+    if (guardResult !== MarketPriceGuardResult.Accepted) {
+      if (guardResult === MarketPriceGuardResult.NonIncreasingEventTimestamp) {
         this.logNonIncreasingEventTimestamp(marketPrice);
         return;
       }
     }
 
     const resolutionScheduled = this.betResolver.process(marketPrice);
-    if (guardResult === "unchanged_price" && !resolutionScheduled) return; // we still procced the events if they are used for bet resolution
+    if (
+      guardResult === MarketPriceGuardResult.UnchangedPrice &&
+      !resolutionScheduled
+    )
+      return; // we still process events used for bet resolution
 
     const processing = this.processAccepted(marketPrice, resolutionScheduled);
     this.pending.add(processing);
@@ -89,7 +97,7 @@ export class MarketPriceProcessor {
     marketPrice: MarketPriceEventData,
     forceHistoryWrite = false,
   ): Promise<void> {
-    let result: "stored" | "skipped";
+    let result: MarketPriceProcessingResult;
 
     try {
       result = await this.writer.process(marketPrice, forceHistoryWrite);
@@ -104,7 +112,7 @@ export class MarketPriceProcessor {
       return;
     }
 
-    if (result === "skipped") return;
+    if (result === MarketPriceProcessingResult.Skipped) return;
 
     try {
       await this.livePricePublisher.publish(marketPrice);
@@ -131,7 +139,7 @@ export class MarketPriceProcessor {
     }
 
     this.log("warn", "market_event_dropped", {
-      reason: "non_increasing_event_timestamp",
+      reason: MarketPriceGuardResult.NonIncreasingEventTimestamp,
       product: marketPrice.product,
       eventTimestamp: marketPrice.eventTimestamp,
       droppedCount: this.nonIncreasingEventTimestamps,

@@ -1,10 +1,6 @@
 import type { MarketPriceEventData } from "./types.js";
 import { toEpochNanoseconds } from "./utils.js";
-
-export type MarketPriceGuardResult =
-  | "accepted"
-  | "non_increasing_event_timestamp"
-  | "unchanged_price";
+import { MarketPriceGuardResult } from "./domain.js";
 
 /** Filters out non-increasing event timestamps and unchanged prices. */
 export class MarketPriceGuard {
@@ -17,15 +13,15 @@ export class MarketPriceGuard {
       this.latestEventTime !== undefined &&
       eventTime <= this.latestEventTime
     ) {
-      return "non_increasing_event_timestamp";
+      return MarketPriceGuardResult.NonIncreasingEventTimestamp;
     }
 
     this.latestEventTime = eventTime;
     if (marketPrice.price === this.latestPrice) {
-      return "unchanged_price";
+      return MarketPriceGuardResult.UnchangedPrice;
     }
 
     this.latestPrice = marketPrice.price;
-    return "accepted";
+    return MarketPriceGuardResult.Accepted;
   }
 }

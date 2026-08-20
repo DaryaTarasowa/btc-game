@@ -8,6 +8,7 @@ const dynamodb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const priceHistoryTable = process.env.PRICE_HISTORY_TABLE;
 const betsTable = process.env.BETS_TABLE;
 const playersTable = process.env.PLAYERS_TABLE;
+const products = (process.env.MARKET_PRODUCTS ?? "").split(",").map((product) => product.trim()).filter(Boolean);
 
 const json = (statusCode, body) => ({
   statusCode,
@@ -48,6 +49,7 @@ export const handler = async (event) => {
 
   try {
     const bet = await createBet(request, {
+      products,
       createId: randomUUID,
       now: () => new Date(),
       async getHistoryPoint(product, sourceTimestamp) {

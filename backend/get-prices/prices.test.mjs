@@ -4,7 +4,7 @@ import { createPriceWindow, requestedPriceWindow, toPriceResponse } from "./pric
 
 test("maps DynamoDB fields to the public model in chronological order", () => {
   assert.deepEqual(
-    toPriceResponse([
+    toPriceResponse("BTC-USD", [
       {
         product: "BTC-USD",
         price: "64473.12",
@@ -21,10 +21,12 @@ test("maps DynamoDB fields to the public model in chronological order", () => {
     {
       prices: [
         {
+          product: "BTC-USD",
           price: "64472.46",
           eventTimestamp: "2026-08-19T00:59:20.743229Z",
         },
         {
+          product: "BTC-USD",
           price: "64473.12",
           eventTimestamp: "2026-08-19T00:59:21.000000Z",
         },
@@ -41,13 +43,13 @@ test("creates an explicit three-minute query window", () => {
 });
 
 test("drops malformed stored records without coercing them", () => {
-  assert.deepEqual(toPriceResponse([
+  assert.deepEqual(toPriceResponse("BTC-USD", [
     null,
     { price: 100, sourceTimestamp: "2026-08-19T01:00:00.000000Z" },
     { price: "100" },
     { price: "101", sourceTimestamp: "2026-08-19T01:00:01.000000Z" },
   ]), {
-    prices: [{ price: "101", eventTimestamp: "2026-08-19T01:00:01.000000Z" }],
+    prices: [{ product: "BTC-USD", price: "101", eventTimestamp: "2026-08-19T01:00:01.000000Z" }],
   });
 });
 

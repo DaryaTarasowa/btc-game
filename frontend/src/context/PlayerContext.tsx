@@ -1,6 +1,7 @@
 import { createContext, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { deleteUser, getCurrentUser, signIn, signOut, signUp } from "aws-amplify/auth";
 import { deletePlayer, ensurePlayer, type Player } from "@/api/players";
+import { useQueryClient } from "@tanstack/react-query";
 
 export interface PlayerContextValue {
   playerId: string | null;
@@ -14,7 +15,16 @@ export interface PlayerContextValue {
 
 export const PlayerContext = createContext<PlayerContextValue | null>(null);
 
+export function removePlayerQueries(
+  queryClient: Pick<ReturnType<typeof useQueryClient>, "removeQueries">,
+  playerId: string,
+) {
+  queryClient.removeQueries({ queryKey: ["player", playerId] });
+  queryClient.removeQueries({ queryKey: ["bets", playerId] });
+}
+
 export function PlayerProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [player, setPlayer] = useState<Player | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -45,16 +55,24 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         await hydrate();
       },
       async logout() {
+        const departingPlayerId = player?.playerId;
         await signOut();
+        if (departingPlayerId) {
+          removePlayerQueries(queryClient, departingPlayerId);
+        }
         setPlayer(null);
       },
       async deleteAccount() {
+        const departingPlayerId = player?.playerId;
         await deletePlayer();
         await deleteUser();
+        if (departingPlayerId) {
+          removePlayerQueries(queryClient, departingPlayerId);
+        }
         setPlayer(null);
       },
     }),
-    [hydrate, isLoading, player],
+    [hydrate, isLoading, player, queryClient],
   );
   return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>;
 }

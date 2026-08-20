@@ -11,6 +11,7 @@ const POINT = {
 function request(overrides = {}) {
   return {
     playerId: PLAYER_ID,
+    product: "BTC-USD",
     direction: "up",
     startPrice: POINT.price,
     startEventTimestamp: POINT.timestamp,
@@ -22,6 +23,7 @@ function harness({ storedPrice = POINT.price, historyExists = true } = {}) {
   let activeBet;
   let activeBetId;
   const dependencies = {
+    products: ["BTC-USD"],
     createId: () => "bet-id",
     now: () => new Date("2026-08-20T12:35:00.000Z"),
     async getHistoryPoint(product, timestamp) {
@@ -116,6 +118,13 @@ test("rejects a nonexistent timestamp", async () => {
 
 test("rejects a stored timestamp whose price differs", async () => {
   await rejectsWithCode(createBet(request(), harness({ storedPrice: "113245.38" }).dependencies), "history_price_mismatch");
+});
+
+test("rejects a product that is not configured", async () => {
+  await rejectsWithCode(
+    createBet(request({ product: "BTC-EUR" }), harness().dependencies),
+    "unsupported_product",
+  );
 });
 
 for (const [name, overrides, code] of [

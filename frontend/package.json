@@ -14,6 +14,7 @@
     "@aws-amplify/api": "^6.3.29",
     "@tanstack/react-query": "^5.85.5",
     "@tanstack/react-router": "^1.131.35",
+    "@testing-library/react": "^16.3.2",
     "@vitejs/plugin-react": "latest",
     "aws-amplify": "^6.20.0",
     "lightweight-charts": "^5.0.8",
@@ -26,6 +27,7 @@
     "@tailwindcss/vite": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
+    "jsdom": "^30.0.1",
     "tailwindcss": "latest",
     "typescript": "latest",
     "vitest": "^3.2.4"

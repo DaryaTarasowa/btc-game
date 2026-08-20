@@ -75,6 +75,7 @@ resource "aws_lambda_function" "get_prices" {
   environment {
     variables = {
       PRICE_HISTORY_TABLE = aws_dynamodb_table.price_history.name
+      MARKET_PRODUCTS     = join(",", var.market_products)
     }
   }
 }
@@ -103,6 +104,7 @@ resource "aws_lambda_function" "create_bet" {
       BETS_TABLE          = aws_dynamodb_table.bets.name
       PLAYERS_TABLE       = aws_dynamodb_table.players.name
       PRICE_HISTORY_TABLE = aws_dynamodb_table.price_history.name
+      MARKET_PRODUCTS     = join(",", var.market_products)
     }
   }
 }

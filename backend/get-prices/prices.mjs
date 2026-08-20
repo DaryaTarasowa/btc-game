@@ -42,7 +42,7 @@ export function requestedPriceWindow(query = {}, now = new Date()) {
   };
 }
 
-export function toPriceResponse(items = []) {
+export function toPriceResponse(product, items = []) {
   const prices = items
     .filter(
       (item) =>
@@ -50,6 +50,7 @@ export function toPriceResponse(items = []) {
         typeof item?.sourceTimestamp === "string",
     )
     .map((item) => ({
+      product,
       price: item.price,
       eventTimestamp: item.sourceTimestamp,
     }))

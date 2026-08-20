@@ -1,54 +1,129 @@
 import { useCallback, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BetNotFoundError, getBet, type ActiveBet, type BetStatus, type ResolvedBet } from "@/api/bets";
+import {
+  BetNotFoundError,
+  getBet,
+  type ActiveBet,
+  type ResolvedBet,
+} from "@/api/bets";
+import { BetStatus } from "@/domain/bets";
 
-export const betStatusQueryKey = (playerId: string, betId: string) => ["bets", playerId, betId] as const;
+export const betStatusQueryKey = (playerId: string, betId: string) =>
+  ["bets", playerId, betId] as const;
 
-export function millisecondsUntilTarget(bet: ActiveBet, now = Date.now()) { return Math.max(0, Date.parse(bet.resolutionTargetTimestamp) - now); }
-export function statusRefetchInterval(status: BetStatus | undefined, targetReached: boolean) { return targetReached && status?.status === "active" ? 1_000 : false; }
-export function statusStaleTime(status: BetStatus | undefined) { return status?.status === "active" ? millisecondsUntilTarget(status) : Infinity; }
+export function millisecondsUntilTarget(bet: ActiveBet, now = Date.now()) {
+  return Math.max(0, Date.parse(bet.resolutionTargetTimestamp) - now);
+}
 
-export function useBetSynchronization(playerId: string | null, persistedActiveBetId?: string) {
+/**
+ * Keeps the frontend synchronized with the lifecycle of the player's active bet.
+ *
+ * Tracks a newly created or persisted active bet, waits until its resolution time,
+ * then polls the backend until the bet is resolved and refreshes the player's score.
+ */
+export function useBetSynchronization(
+  playerId: string | null,
+  persistedActiveBetId?: string,
+) {
   const queryClient = useQueryClient();
-  const [betId, setBetId] = useState<string | null>(persistedActiveBetId ?? null);
-  const [resolvedBet, setResolvedBet] = useState<ResolvedBet | null>(null);
-  const [targetReached, setTargetReached] = useState(false);
 
-  useEffect(() => { setBetId(persistedActiveBetId ?? null); setResolvedBet(null); setTargetReached(false); }, [playerId, persistedActiveBetId]);
+  const [betId, setBetId] = useState<string | null>(
+    persistedActiveBetId ?? null,
+  );
+  const [resolvedBet, setResolvedBet] = useState<ResolvedBet | null>(null);
+  const [isRecovering, setIsRecovering] = useState(
+    Boolean(playerId && persistedActiveBetId),
+  );
+  const [isPolling, setIsPolling] = useState(false);
+
+  useEffect(() => {
+    setBetId(persistedActiveBetId ?? null);
+    setResolvedBet(null);
+    setIsRecovering(Boolean(playerId && persistedActiveBetId));
+    setIsPolling(false);
+  }, [playerId, persistedActiveBetId]);
 
   const query = useQuery({
-    queryKey: playerId && betId ? betStatusQueryKey(playerId, betId) : ["bets", "idle"],
+    queryKey:
+      playerId && betId ? betStatusQueryKey(playerId, betId) : ["bets", "idle"],
+
     queryFn: ({ signal }) => getBet(betId!, signal),
-    enabled: Boolean(playerId && betId),
-    staleTime: ({ state }) => statusStaleTime(state.data),
-    refetchInterval: ({ state }) => statusRefetchInterval(state.data, targetReached),
+
+    enabled: Boolean(playerId && betId && (isRecovering || isPolling)),
+
+    // If we're polling, keep checking once per second.
+    refetchInterval: isPolling ? 1_000 : false,
+
+    // A persisted bet must be checked against the backend after remount/login.
+    refetchOnMount: "always",
   });
 
+  // If the bet is still active, wait until its resolution time to start polling.
   useEffect(() => {
-    if (query.data?.status !== "active") return;
+    if (query.data?.status !== BetStatus.Active) return;
+    if (isRecovering && query.isFetching) return;
+
     const delay = millisecondsUntilTarget(query.data);
-    if (delay === 0) { setTargetReached(true); return; }
-    const timer = window.setTimeout(() => { setTargetReached(true); void query.refetch(); }, delay);
+    setIsRecovering(false);
+
+    if (delay === 0) {
+      setIsPolling(true);
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setIsPolling(true);
+    }, delay);
+
     return () => window.clearTimeout(timer);
-  }, [query.data, query.refetch]);
+  }, [isRecovering, query.data, query.isFetching]);
 
+  // If the bet has been resolved, store it and clear the active bet state.
   useEffect(() => {
-    if (!playerId || query.data?.status !== "resolved") return;
-    setResolvedBet(query.data); setBetId(null); setTargetReached(false);
-    void queryClient.invalidateQueries({ queryKey: ["player", playerId] });
-  }, [playerId, query.data, queryClient]);
+    if (!playerId || query.data?.status !== BetStatus.Resolved) return;
+    if (isRecovering && query.isFetching) return;
 
-  useEffect(() => {
-    if (!playerId || !(query.error instanceof BetNotFoundError)) return;
+    setResolvedBet(query.data);
     setBetId(null);
-  }, [playerId, query.error]);
+    setIsRecovering(false);
+    setIsPolling(false);
 
-  const trackCreatedBet = useCallback((bet: ActiveBet) => {
-    if (!playerId) return;
-    queryClient.setQueryData(betStatusQueryKey(playerId, bet.betId), bet);
-    setResolvedBet(null); setTargetReached(false); setBetId(bet.betId);
-  }, [playerId, queryClient]);
+    void queryClient.invalidateQueries({
+      queryKey: ["player", playerId],
+    });
+  }, [isRecovering, playerId, query.data, query.isFetching, queryClient]);
 
-  const activeBet = query.data?.status === "active" ? query.data as ActiveBet : null;
-  return { activeBet, resolvedBet, isRecovering: Boolean(betId && query.isPending), trackCreatedBet };
+  useEffect(() => {
+    if (!(query.error instanceof BetNotFoundError)) return;
+
+    setBetId(null);
+    setIsRecovering(false);
+    setIsPolling(false);
+  }, [query.error]);
+
+  const trackCreatedBet = useCallback(
+    (bet: ActiveBet) => {
+      if (!playerId) return;
+
+      queryClient.setQueryData(betStatusQueryKey(playerId, bet.betId), bet);
+
+      setBetId(bet.betId);
+      setResolvedBet(null);
+      setIsRecovering(false);
+      setIsPolling(false);
+    },
+    [playerId, queryClient],
+  );
+
+  const activeBet =
+    !isRecovering && query.data?.status === BetStatus.Active
+      ? query.data
+      : null;
+
+  return {
+    activeBet,
+    resolvedBet,
+    isRecovering,
+    trackCreatedBet,
+  };
 }

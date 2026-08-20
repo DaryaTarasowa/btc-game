@@ -7,6 +7,7 @@ import type {
   ResolutionWriteResult,
 } from "./betRepository.js";
 import { BetResolver } from "./betResolver.js";
+import { BetDirection, BetResult, BetStatus, ResolutionWriteResult as ResolutionResult } from "./domain.js";
 import type { MarketPriceEventData } from "./types.js";
 
 const TARGET = "2026-08-20T12:01:00.000Z";
@@ -15,8 +16,9 @@ function bet(overrides: Partial<ActiveBet> = {}): ActiveBet {
   return {
     betId: "bet-1",
     playerId: "player-1",
-    direction: "up",
-    status: "active",
+    product: "BTC-USD",
+    direction: BetDirection.Up,
+    status: BetStatus.Active,
     startPrice: "100",
     startEventTimestamp: "2026-08-20T12:00:00.000Z",
     resolutionTargetTimestamp: TARGET,
@@ -48,7 +50,7 @@ class FakeRepository implements BetStore {
   }> = [];
 
   public queryCount = 0;
-  public resolutionResult: ResolutionWriteResult = "resolved";
+  public resolutionResult: ResolutionWriteResult = ResolutionResult.Resolved;
   public resolutionFailuresRemaining = 0;
 
   public async queryActiveThrough(): Promise<ActiveBet[]> {
@@ -172,7 +174,7 @@ test("comparison is against start price rather than the previous event", async (
   assert.deepEqual(repository.resolutions[0]?.resolution, {
     endPrice: "101",
     endEventTimestamp: "2026-08-20T12:01:00.100Z",
-    result: "won",
+    result: BetResult.Won,
   });
 });
 
@@ -190,15 +192,15 @@ test("an UP bet loses when the exact resolution price is lower even if a later p
   assert.deepEqual(repository.resolutions[0]?.resolution, {
     endPrice: "71724.9",
     endEventTimestamp: TARGET,
-    result: "lost",
+    result: BetResult.Lost,
   });
 });
 
 for (const [direction, endPrice, result] of [
-  ["up", "101", "won"],
-  ["up", "99", "lost"],
-  ["down", "99", "won"],
-  ["down", "101", "lost"],
+  [BetDirection.Up, "101", BetResult.Won],
+  [BetDirection.Up, "99", BetResult.Lost],
+  [BetDirection.Down, "99", BetResult.Won],
+  [BetDirection.Down, "101", BetResult.Lost],
 ] as const) {
   test(`${direction.toUpperCase()} ${result}`, async () => {
     const repository = new FakeRepository();
@@ -215,7 +217,7 @@ for (const [direction, endPrice, result] of [
 
 test("conditional duplicate resolution is harmless", async () => {
   const repository = new FakeRepository();
-  repository.resolutionResult = "already_resolved";
+  repository.resolutionResult = ResolutionResult.AlreadyResolved;
 
   const value = await load(repository);
 
@@ -225,6 +227,16 @@ test("conditional duplicate resolution is harmless", async () => {
   await value.stop();
 
   assert.equal(repository.resolutions.length, 1);
+});
+
+test("does not resolve a bet from another product's market event", async () => {
+  const repository = new FakeRepository();
+  const value = await load(repository, bet({ product: "BTC-EUR" }));
+
+  value.process(event("101", TARGET));
+  await value.stop();
+
+  assert.equal(repository.resolutions.length, 0);
 });
 
 test("reload discovers a newly created bet", async () => {
@@ -305,6 +317,6 @@ test("failed resolution retries the original retained resolution", async () => {
   assert.deepEqual(repository.resolutions[0]?.resolution, {
     endPrice: "99",
     endEventTimestamp: TARGET,
-    result: "lost",
+    result: BetResult.Lost,
   });
 });

@@ -3,9 +3,9 @@ import WebSocket, { type RawData } from "ws";
 import { getMessageType, normalizeCoinbaseMessage } from "./coinbaseMapper.js";
 import type { MarketPriceEventData } from "./types.js";
 import type { LogLevel } from "./utils.js";
+import { CoinbaseMessageType } from "./domain.js";
 
 const COINBASE_URL = "wss://ws-feed.exchange.coinbase.com";
-const PRODUCT = "BTC-USD";
 const INITIAL_RECONNECT_DELAY_MS = 1_000;
 const MAX_RECONNECT_DELAY_MS = 30_000;
 const STALE_CONNECTION_MS = 15_000;
@@ -24,6 +24,8 @@ export class CoinbasePriceConsumer {
   private stopping = false;
 
   public constructor(
+    private readonly products: readonly string[],
+    private readonly channels: readonly string[],
     private readonly log: Logger,
     private readonly onPriceUpdate: (eventData: MarketPriceEventData) => void,
   ) {}
@@ -48,7 +50,7 @@ export class CoinbasePriceConsumer {
   private connect(): void {
     this.log("info", "coinbase_connecting", {
       url: COINBASE_URL,
-      product: PRODUCT,
+      products: this.products,
     });
     const socket = new WebSocket(COINBASE_URL);
     this.socket = socket;
@@ -63,11 +65,11 @@ export class CoinbasePriceConsumer {
       socket.send(
         JSON.stringify({
           type: "subscribe",
-          product_ids: [PRODUCT],
-          channels: ["ticker", "heartbeat"],
+          product_ids: this.products,
+          channels: this.channels,
         }),
       );
-      this.log("info", "coinbase_connected", { product: PRODUCT });
+      this.log("info", "coinbase_connected", { products: this.products });
       this.resetWatchdog(socket);
     });
 
@@ -112,11 +114,11 @@ export class CoinbasePriceConsumer {
 
     const type = getMessageType(value);
 
-    if (type === "subscriptions" || type === "heartbeat") {
+    if (type === CoinbaseMessageType.Subscriptions || type === CoinbaseMessageType.Heartbeat) {
       return;
     }
 
-    if (type === "error") {
+    if (type === CoinbaseMessageType.Error) {
       this.log("error", "coinbase_error_message");
       return;
     }
@@ -124,6 +126,7 @@ export class CoinbasePriceConsumer {
     const marketPriceEventData = normalizeCoinbaseMessage(
       value,
       new Date().toISOString(),
+      this.products,
     );
 
     if (!marketPriceEventData) {

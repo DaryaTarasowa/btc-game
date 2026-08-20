@@ -19,7 +19,7 @@ output "cognito_user_pool_client_id" {
 }
 
 output "price_history_url" {
-  description = "Frontend endpoint that returns recent BTC-USD price history."
+  description = "Frontend endpoint that returns recent price history for a selected product."
   value       = "${aws_apigatewayv2_stage.default.invoke_url}prices"
 }
 
@@ -96,7 +96,22 @@ output "live_price_event_namespace" {
   value       = aws_appsync_channel_namespace.prices.name
 }
 
-output "live_price_event_channel" {
-  description = "AppSync Events channel for BTC-USD live prices."
-  value       = "/prices/BTC-USD"
+output "live_price_event_channel_prefix" {
+  description = "AppSync Events channel prefix; append the selected product."
+  value       = var.live_price_channel_prefix
+}
+
+output "market_products" {
+  description = "Comma-separated market products available to the application."
+  value       = join(",", var.market_products)
+}
+
+output "default_market_product" {
+  description = "Initial frontend market product."
+  value       = var.default_market_product
+}
+
+output "coinbase_channels" {
+  description = "Comma-separated Coinbase channels used by the consumer."
+  value       = join(",", var.coinbase_channels)
 }

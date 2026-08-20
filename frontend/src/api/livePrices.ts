@@ -1,12 +1,13 @@
 import { events } from "@aws-amplify/api";
 import type { MarketPrice } from "@/api/prices";
-
-const CHANNEL = import.meta.env.VITE_APPSYNC_EVENTS_CHANNEL;
+import { marketConfig } from "@/config/market";
 
 export async function subscribeToLivePrices(
+  product: string,
   onPrice: (price: MarketPrice) => void,
 ): Promise<() => void> {
-  const channel = await events.connect(CHANNEL);
+  const channelPath = `${marketConfig.livePriceChannelPrefix.replace(/\/$/, "")}/${product}`;
+  const channel = await events.connect(channelPath);
 
   const subscription = channel.subscribe({
     next: (event) => {

@@ -22,7 +22,7 @@ test("publishes the market price to the fixed BTC channel using the signed reque
     return { ok: true, status: 200 } as Response;
   };
 
-  await new AppsyncEventsPublisher("https://events.example.test/event", signer as never, fetcher).publish(marketPrice);
+  await new AppsyncEventsPublisher("https://events.example.test/event", "/prices", signer as never, fetcher).publish(marketPrice);
 
   assert.equal(unsignedRequest?.hostname, "events.example.test");
   assert.equal(unsignedRequest?.path, "/event");
@@ -41,7 +41,7 @@ test("fails when AppSync rejects a publish", async () => {
   const signer = { sign: async (request: unknown) => request };
   const fetcher: typeof fetch = async () => ({ ok: false, status: 403 }) as Response;
   await assert.rejects(
-    new AppsyncEventsPublisher("https://events.example.test/event", signer as never, fetcher).publish(marketPrice),
+    new AppsyncEventsPublisher("https://events.example.test/event", "/prices", signer as never, fetcher).publish(marketPrice),
     /status 403/,
   );
 });
