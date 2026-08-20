@@ -94,7 +94,7 @@ export class BetResolver {
         queryTimestamp(new Date(currentMs + this.lookaheadMs)),
       )
       .then((activeBetsDue) => {
-        for (const bet of activeBetsDue) this.activeBetsById.set(bet.id, bet);
+        for (const bet of activeBetsDue) this.activeBetsById.set(bet.betId, bet);
 
         // Recovery only: retry resolutions whose previous write failed.
         if (this.retainedResolutions.size > 0) {
@@ -137,7 +137,7 @@ export class BetResolver {
 
     for (const bet of this.activeBetsById.values()) {
       if (this.shouldResolve(bet, event)) {
-        const existingResolution = this.retainedResolutions.get(bet.id);
+        const existingResolution = this.retainedResolutions.get(bet.betId);
         const comparison = compareDecimal(event.price, bet.startPrice);
 
         const resolution: BetResolution = existingResolution ?? {
@@ -153,7 +153,7 @@ export class BetResolver {
                 : "lost",
         };
 
-        this.retainedResolutions.set(bet.id, resolution);
+        this.retainedResolutions.set(bet.betId, resolution);
 
         const scheduled = this.scheduleResolution(bet, resolution);
         if (!existingResolution && scheduled) {
@@ -177,15 +177,15 @@ export class BetResolver {
     bet: ActiveBet,
     resolution: BetResolution,
   ): boolean {
-    if (this.betsBeingResolved.has(bet.id) || this.stopping) return false;
-    this.betsBeingResolved.add(bet.id);
+    if (this.betsBeingResolved.has(bet.betId) || this.stopping) return false;
+    this.betsBeingResolved.add(bet.betId);
     const operation = this.repository
       .resolveBetConditionally(bet, resolution)
       .then((result) => {
-        this.activeBetsById.delete(bet.id);
-        this.retainedResolutions.delete(bet.id);
+        this.activeBetsById.delete(bet.betId);
+        this.retainedResolutions.delete(bet.betId);
         this.log("info", "bet_resolved", {
-          betId: bet.id,
+          betId: bet.betId,
           playerId: bet.playerId,
           result,
           endEventTimestamp: resolution.endEventTimestamp,
@@ -193,14 +193,14 @@ export class BetResolver {
       })
       .catch((error: unknown) => {
         this.log("error", "bet_resolution_failed", {
-          betId: bet.id,
+          betId: bet.betId,
           playerId: bet.playerId,
           message:
             error instanceof Error ? error.message : "Unknown DynamoDB error",
         });
       })
       .finally(() => {
-        this.betsBeingResolved.delete(bet.id);
+        this.betsBeingResolved.delete(bet.betId);
         this.inFlightWrites.delete(operation);
       });
     this.inFlightWrites.add(operation);

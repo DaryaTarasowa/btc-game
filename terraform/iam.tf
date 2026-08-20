@@ -148,14 +148,23 @@ resource "aws_iam_role_policy" "create_bet_runtime" {
         Resource = aws_dynamodb_table.price_history.arn
       },
       {
-        Effect   = "Allow"
-        Action   = "dynamodb:PutItem"
+        Effect = "Allow"
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:Query"
+        ]
         Resource = aws_dynamodb_table.bets.arn
       },
       {
         Effect   = "Allow"
-        Action   = "dynamodb:Query"
-        Resource = aws_dynamodb_table.bets.arn
+        Action   = "dynamodb:UpdateItem"
+        Resource = aws_dynamodb_table.players.arn
+      },
+      {
+        Effect   = "Allow"
+        Action   = "dynamodb:TransactWriteItems"
+        Resource = [aws_dynamodb_table.bets.arn, aws_dynamodb_table.players.arn]
       }
     ]
   })

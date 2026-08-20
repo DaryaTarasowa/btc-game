@@ -101,6 +101,7 @@ resource "aws_lambda_function" "create_bet" {
   environment {
     variables = {
       BETS_TABLE          = aws_dynamodb_table.bets.name
+      PLAYERS_TABLE       = aws_dynamodb_table.players.name
       PRICE_HISTORY_TABLE = aws_dynamodb_table.price_history.name
     }
   }

@@ -17,7 +17,7 @@ The application is deployed to `eu-central-1`.
 
 Amazon Cognito provides email/password registration, login, logout, and durable sessions. Registrations are automatically confirmed by a minimal pre-sign-up trigger, so this demo does not require an email confirmation-code step. The Cognito `sub` claim is the authoritative player ID; API Gateway verifies the JWT before protected player and bet routes run. DynamoDB stores the player's username and score. The frontend never creates or persists its own player identity.
 
-The browser stores only the current bet ID as a recovery pointer. DynamoDB remains authoritative: the frontend waits until the bet's earliest resolution timestamp, then checks status and polls once per second only while the backend still reports it active. This avoids roughly 60 unnecessary requests during the first minute of every bet.
+The player record's optional `activeBetId` is the authoritative recovery pointer; the browser does not persist active-bet state. Each bet keeps the stable `(playerId, betId)` key from creation through resolution. The frontend waits until the bet's earliest resolution timestamp, then checks status and polls once per second only while the backend still reports it active. This avoids roughly 60 unnecessary requests during the first minute of every bet.
 
 The authenticated `/history` page lists only completed bets whose retained market data can still reconstruct a chart, followed by a count of older hidden bets. The chart action loads five seconds before creation through five seconds after resolution from DynamoDB; the existing chart renders that static data with authoritative creation and resolution markers and does not attach the live-price subscription.
 

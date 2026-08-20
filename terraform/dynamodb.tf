@@ -49,7 +49,7 @@ resource "aws_dynamodb_table" "bets" {
   name         = "btc-game-bets"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "playerId"
-  range_key    = "recordKey"
+  range_key    = "betId"
   table_class  = "STANDARD"
 
   attribute {
@@ -58,7 +58,7 @@ resource "aws_dynamodb_table" "bets" {
   }
 
   attribute {
-    name = "recordKey"
+    name = "betId"
     type = "S"
   }
 

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { BetCreationError, createBet } from "./bets.mjs";
+import { BetCreationError, createBet, createBetTransaction } from "./bets.mjs";
 
 const PLAYER_ID = "550e8400-e29b-41d4-a716-446655440000";
 const POINT = {
@@ -20,6 +20,7 @@ function request(overrides = {}) {
 
 function harness({ storedPrice = POINT.price, historyExists = true } = {}) {
   let activeBet;
+  let activeBetId;
   const dependencies = {
     createId: () => "bet-id",
     now: () => new Date("2026-08-20T12:35:00.000Z"),
@@ -28,18 +29,19 @@ function harness({ storedPrice = POINT.price, historyExists = true } = {}) {
       assert.equal(timestamp, POINT.timestamp);
       return historyExists ? { price: storedPrice } : undefined;
     },
-    async putActiveBet(bet) {
+    async transactCreateBet(bet) {
       await Promise.resolve();
-      if (activeBet) {
+      if (activeBetId) {
         const error = new Error("duplicate");
-        error.name = "ConditionalCheckFailedException";
+        error.name = "TransactionCanceledException";
         throw error;
       }
       activeBet = bet;
+      activeBetId = bet.betId;
     },
-    isDuplicateError: (error) => error?.name === "ConditionalCheckFailedException",
+    isDuplicateError: (error) => error?.name === "TransactionCanceledException",
   };
-  return { dependencies, get activeBet() { return activeBet; } };
+  return { dependencies, get activeBet() { return activeBet; }, get activeBetId() { return activeBetId; } };
 }
 
 async function rejectsWithCode(promise, code) {
@@ -56,7 +58,37 @@ test("creates a valid UP bet from the exact visible history point", async () => 
   assert.equal(bet.direction, "up");
   assert.equal(bet.startPrice, POINT.price);
   assert.equal(bet.startEventTimestamp, POINT.timestamp);
+  assert.equal(bet.betId, "bet-id");
   assert.deepEqual(state.activeBet, bet);
+  assert.equal(state.activeBetId, bet.betId);
+});
+
+test("creation transaction atomically puts the stable bet and claims the player", () => {
+  const bet = {
+    betId: "bet-id",
+    playerId: PLAYER_ID,
+    status: "active",
+  };
+  assert.deepEqual(createBetTransaction(bet, "bets", "players"), {
+    TransactItems: [
+      {
+        Put: {
+          TableName: "bets",
+          Item: bet,
+          ConditionExpression: "attribute_not_exists(playerId) AND attribute_not_exists(betId)",
+        },
+      },
+      {
+        Update: {
+          TableName: "players",
+          Key: { playerId: PLAYER_ID },
+          UpdateExpression: "SET activeBetId = :betId",
+          ConditionExpression: "attribute_exists(playerId) AND attribute_not_exists(activeBetId)",
+          ExpressionAttributeValues: { ":betId": "bet-id" },
+        },
+      },
+    ],
+  });
 });
 
 test("creates a valid DOWN bet", async () => {

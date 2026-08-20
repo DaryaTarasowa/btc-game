@@ -6,9 +6,8 @@ import { authHeaders } from "@/api/auth";
 export type BetDirection = "up" | "down";
 
 export const activeBetSchema = z.object({
-  id: z.string().min(1),
+  betId: z.string().min(1),
   playerId: z.string().refine(isPlayerId),
-  recordKey: z.literal("ACTIVE"),
   direction: z.enum(["up", "down"]),
   status: z.literal("active"),
   startPrice: z.string(),
@@ -19,8 +18,7 @@ export const activeBetSchema = z.object({
 
 export type ActiveBet = z.infer<typeof activeBetSchema>;
 
-export const resolvedBetSchema = activeBetSchema.omit({ recordKey: true, status: true }).extend({
-  recordKey: z.string().startsWith("BET#"),
+export const resolvedBetSchema = activeBetSchema.omit({ status: true }).extend({
   status: z.literal("resolved"),
   result: z.enum(["won", "lost"]),
   endPrice: z.string(),

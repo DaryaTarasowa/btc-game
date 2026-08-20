@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from "vitest";
-import { deletePlayer, ensurePlayer, getPlayer, isPlayerId } from "@/api/players";
+import { deletePlayer, ensurePlayer, getPlayer, isPlayerId, playerResponseSchema } from "@/api/players";
 
 vi.mock("@/api/auth", () => ({ authHeaders: vi.fn(async (json: boolean) => json ? { authorization: "Bearer token", "content-type": "application/json" } : { authorization: "Bearer token" }) }));
 
@@ -15,6 +15,10 @@ afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
 test("accepts a Cognito subject that is UUID-shaped but not an RFC UUID", () => {
   expect(isPlayerId("00000000-0000-0000-0000-000000000000")).toBe(true);
+});
+
+test("accepts the optional authoritative active-bet pointer", () => {
+  expect(playerResponseSchema.parse({ ...player, activeBetId: "bet-id" }).activeBetId).toBe("bet-id");
 });
 
 test("rejects unsafe player identity characters", () => {
