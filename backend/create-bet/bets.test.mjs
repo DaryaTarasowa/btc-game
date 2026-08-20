@@ -65,6 +65,14 @@ test("creates a valid DOWN bet", async () => {
   assert.equal(bet.direction, "down");
 });
 
+test("accepts a Cognito subject that is UUID-shaped but not an RFC UUID", async () => {
+  const bet = await createBet(
+    request({ playerId: "00000000-0000-0000-0000-000000000000" }),
+    harness().dependencies,
+  );
+  assert.equal(bet.playerId, "00000000-0000-0000-0000-000000000000");
+});
+
 test("resolution target is exactly 60 seconds after source time with precision preserved", async () => {
   const bet = await createBet(request(), harness().dependencies);
   assert.equal(bet.resolutionTargetTimestamp, "2026-08-20T12:35:56.123456Z");

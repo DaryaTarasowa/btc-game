@@ -3,10 +3,22 @@ resource "aws_apigatewayv2_api" "player" {
   protocol_type = "HTTP"
 
   cors_configuration {
-    allow_headers = ["content-type"]
-    allow_methods = ["GET", "POST", "OPTIONS"]
+    allow_headers = ["authorization", "content-type"]
+    allow_methods = ["DELETE", "GET", "PATCH", "POST", "OPTIONS"]
     allow_origins = ["*"]
     max_age       = 3600
+  }
+}
+
+resource "aws_apigatewayv2_authorizer" "cognito" {
+  api_id           = aws_apigatewayv2_api.player.id
+  authorizer_type  = "JWT"
+  identity_sources = ["$request.header.Authorization"]
+  name             = "btc-game-cognito"
+
+  jwt_configuration {
+    audience = [aws_cognito_user_pool_client.frontend.id]
+    issuer   = "https://${aws_cognito_user_pool.players.endpoint}"
   }
 }
 
@@ -19,9 +31,11 @@ resource "aws_apigatewayv2_integration" "create_player" {
 }
 
 resource "aws_apigatewayv2_route" "create_player" {
-  api_id    = aws_apigatewayv2_api.player.id
-  route_key = "POST /players"
-  target    = "integrations/${aws_apigatewayv2_integration.create_player.id}"
+  api_id             = aws_apigatewayv2_api.player.id
+  route_key          = "POST /players"
+  target             = "integrations/${aws_apigatewayv2_integration.create_player.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
 resource "aws_apigatewayv2_stage" "default" {
@@ -44,9 +58,11 @@ resource "aws_lambda_permission" "api_create_player" {
 }
 
 resource "aws_apigatewayv2_route" "get_player" {
-  api_id    = aws_apigatewayv2_api.player.id
-  route_key = "GET /players/{playerId}"
-  target    = "integrations/${aws_apigatewayv2_integration.create_player.id}"
+  api_id             = aws_apigatewayv2_api.player.id
+  route_key          = "GET /players/me"
+  target             = "integrations/${aws_apigatewayv2_integration.create_player.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
 resource "aws_lambda_permission" "api_get_player" {
@@ -54,7 +70,31 @@ resource "aws_lambda_permission" "api_get_player" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.create_player.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.player.execution_arn}/*/GET/players/*"
+  source_arn    = "${aws_apigatewayv2_api.player.execution_arn}/*/GET/players/me"
+}
+
+resource "aws_apigatewayv2_route" "update_player" {
+  api_id             = aws_apigatewayv2_api.player.id
+  route_key          = "PATCH /players/me"
+  target             = "integrations/${aws_apigatewayv2_integration.create_player.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_apigatewayv2_route" "delete_player" {
+  api_id             = aws_apigatewayv2_api.player.id
+  route_key          = "DELETE /players/me"
+  target             = "integrations/${aws_apigatewayv2_integration.create_player.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
+}
+
+resource "aws_lambda_permission" "api_manage_player" {
+  statement_id  = "AllowPlayerApiInvokeManagePlayer"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.create_player.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.player.execution_arn}/*/*/players/me"
 }
 
 resource "aws_apigatewayv2_integration" "get_prices" {
@@ -88,9 +128,11 @@ resource "aws_apigatewayv2_integration" "create_bet" {
 }
 
 resource "aws_apigatewayv2_route" "create_bet" {
-  api_id    = aws_apigatewayv2_api.player.id
-  route_key = "POST /bets"
-  target    = "integrations/${aws_apigatewayv2_integration.create_bet.id}"
+  api_id             = aws_apigatewayv2_api.player.id
+  route_key          = "POST /bets"
+  target             = "integrations/${aws_apigatewayv2_integration.create_bet.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
 resource "aws_lambda_permission" "api_create_bet" {

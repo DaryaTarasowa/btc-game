@@ -14,9 +14,11 @@ const json = (statusCode, body) => ({
 });
 
 export const handler = async (event) => {
+  const playerId = event?.requestContext?.authorizer?.jwt?.claims?.sub;
+  if (typeof playerId !== "string") return json(401, { error: "unauthorized", message: "Authentication is required." });
   let request;
   try {
-    request = JSON.parse(event?.body ?? "");
+    request = { ...JSON.parse(event?.body ?? ""), playerId };
   } catch {
     return json(400, { error: "invalid_json", message: "Request body must be valid JSON." });
   }

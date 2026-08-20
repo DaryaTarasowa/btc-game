@@ -1,6 +1,10 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { createBet } from "./bets";
 
+vi.mock("aws-amplify/auth", () => ({
+  fetchAuthSession: async () => ({ tokens: { idToken: { toString: () => "test-id-token" } } }),
+}));
+
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
@@ -26,7 +30,6 @@ test("sends the exact visible price and event timestamp", async () => {
   vi.stubGlobal("fetch", fetchMock);
 
   await createBet({
-    playerId: response.playerId,
     direction: "up",
     point: {
       price: response.startPrice,
@@ -38,8 +41,11 @@ test("sends the exact visible price and event timestamp", async () => {
     expect.any(String),
     expect.objectContaining({
       method: "POST",
+      headers: {
+        authorization: "Bearer test-id-token",
+        "content-type": "application/json",
+      },
       body: JSON.stringify({
-        playerId: response.playerId,
         direction: "up",
         startPrice: response.startPrice,
         startEventTimestamp: response.startEventTimestamp,

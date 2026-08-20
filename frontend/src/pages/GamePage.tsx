@@ -23,7 +23,7 @@ function useBetCountdown(targetTimestamp?: string) {
 }
 
 export function GamePage() {
-  const { playerId } = usePlayer();
+  const { playerId, player } = usePlayer();
   const recentPrices = useRecentPrices();
   useLivePrices();
   const prices = recentPrices.data ?? [];
@@ -31,7 +31,7 @@ export function GamePage() {
   const [activeBet, setActiveBet] = useStoredActiveBet(playerId);
   const createBet = useCreateBet(setActiveBet);
   const secondsRemaining = useBetCountdown(activeBet?.resolutionTargetTimestamp);
-  const player = usePlayerScore(playerId);
+  const playerScore = usePlayerScore(playerId);
 
   return (
     <div className="game-page">
@@ -39,10 +39,14 @@ export function GamePage() {
         <p className="eyebrow">PLAYER</p>
         <h1>{playerId ? "Place your call" : "Ready to play?"}</h1>
         {playerId ? (
+          <>
           <p className="identity">
-            Signed in as <strong>{playerId}</strong>
-            <span className="player-score">Score: {player.data?.score ?? "—"}</span>
+            Signed in as <strong>{player?.username}</strong>
+            <small>{player?.email}</small>
+            <span className="player-score">Score: {playerScore.data?.score ?? "—"}</span>
           </p>
+          <LoginButton />
+          </>
         ) : (
           <LoginButton />
         )}
@@ -62,7 +66,7 @@ export function GamePage() {
           disabled={!playerId || !latestVisiblePoint || createBet.isPending || Boolean(activeBet)}
           onChoose={(direction) => {
             if (!playerId || !latestVisiblePoint) return;
-            createBet.mutate({ playerId, direction, point: latestVisiblePoint });
+            createBet.mutate({ direction, point: latestVisiblePoint });
           }}
         />
         {createBet.isError && <p className="error">{createBet.error.message}</p>}

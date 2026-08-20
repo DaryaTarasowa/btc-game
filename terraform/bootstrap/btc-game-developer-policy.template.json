@@ -29,9 +29,23 @@
         "ec2:DescribeSubnets",
         "ec2:DescribeVpcAttribute",
         "ec2:DescribeVpcs",
-        "logs:DescribeLogGroups"
+        "logs:DescribeLogGroups",
+        "cognito-idp:CreateUserPool",
+        "cognito-idp:ListUserPools"
       ],
       "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "cognito-idp:*UserPool",
+        "cognito-idp:*UserPoolClient",
+        "cognito-idp:*UserPoolMfaConfig",
+        "cognito-idp:ListTagsForResource",
+        "cognito-idp:TagResource",
+        "cognito-idp:UntagResource"
+      ],
+      "Resource": "arn:${AWS_PARTITION}:cognito-idp:${AWS_REGION}:${AWS_ACCOUNT_ID}:userpool/*"
     },
     {
       "Effect": "Allow",

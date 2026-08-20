@@ -1,11 +1,9 @@
-import { randomUUID } from "node:crypto";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { BatchWriteCommand, DeleteCommand, DynamoDBDocumentClient, GetCommand, QueryCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 
 const dynamodb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-const tableName = process.env.PLAYERS_TABLE;
-
-const PLAYER_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const playersTable = process.env.PLAYERS_TABLE;
+const betsTable = process.env.BETS_TABLE;
 
 const response = (statusCode, body) => ({
   statusCode,
@@ -13,36 +11,90 @@ const response = (statusCode, body) => ({
   body: JSON.stringify(body),
 });
 
-export const handler = async (event) => {
-  if (event?.requestContext?.http?.method === "GET") {
-    const playerId = event.pathParameters?.playerId;
-    if (typeof playerId !== "string" || !PLAYER_ID_PATTERN.test(playerId)) {
-      return response(400, { error: "invalid_player_id" });
-    }
+function claimsFrom(event) {
+  const claims = event?.requestContext?.authorizer?.jwt?.claims;
+  if (typeof claims?.sub !== "string" || typeof claims?.email !== "string") throw new Error("Authenticated JWT claims are missing.");
+  return claims;
+}
 
-    const result = await dynamodb.send(new GetCommand({
-      TableName: tableName,
-      Key: { playerId },
+function validUsername(value) {
+  if (typeof value !== "string") return null;
+  const username = value.trim();
+  return /^[\p{L}\p{N}_. -]{2,32}$/u.test(username) ? username : null;
+}
+
+async function deleteBets(playerId) {
+  let cursor;
+  do {
+    const page = await dynamodb.send(new QueryCommand({
+      TableName: betsTable,
+      KeyConditionExpression: "playerId = :playerId",
+      ExpressionAttributeValues: { ":playerId": playerId },
+      ProjectionExpression: "playerId, recordKey",
+      ExclusiveStartKey: cursor,
       ConsistentRead: true,
     }));
-    return result.Item
-      ? response(200, result.Item)
-      : response(404, { error: "player_not_found" });
+    const requests = (page.Items ?? []).map((item) => ({ DeleteRequest: { Key: item } }));
+    for (let offset = 0; offset < requests.length; offset += 25) {
+      let pending = requests.slice(offset, offset + 25);
+      do {
+        const result = await dynamodb.send(new BatchWriteCommand({ RequestItems: { [betsTable]: pending } }));
+        pending = result.UnprocessedItems?.[betsTable] ?? [];
+      } while (pending.length > 0);
+    }
+    cursor = page.LastEvaluatedKey;
+  } while (cursor);
+}
+
+export const handler = async (event) => {
+  try {
+    const claims = claimsFrom(event);
+    const playerId = claims.sub;
+    const method = event?.requestContext?.http?.method;
+
+    if (method === "GET") {
+      const result = await dynamodb.send(new GetCommand({ TableName: playersTable, Key: { playerId }, ConsistentRead: true }));
+      return result.Item ? response(200, result.Item) : response(404, { error: "player_not_found" });
+    }
+
+    if (method === "POST") {
+      const username = validUsername(claims.preferred_username) ?? claims.email.split("@")[0].slice(0, 32);
+      const result = await dynamodb.send(new UpdateCommand({
+        TableName: playersTable,
+        Key: { playerId },
+        UpdateExpression: "SET email = :email, username = :username, score = if_not_exists(score, :zero), createdAt = if_not_exists(createdAt, :createdAt)",
+        ExpressionAttributeValues: { ":email": claims.email, ":username": username, ":zero": 0, ":createdAt": new Date().toISOString() },
+        ReturnValues: "ALL_NEW",
+      }));
+      return response(200, result.Attributes);
+    }
+
+    if (method === "PATCH") {
+      let body;
+      try { body = JSON.parse(event?.body ?? ""); } catch { return response(400, { error: "invalid_json" }); }
+      const username = validUsername(body?.username);
+      if (!username) return response(400, { error: "invalid_username", message: "Username must be 2–32 letters, numbers, spaces, dots, underscores, or hyphens." });
+      const result = await dynamodb.send(new UpdateCommand({
+        TableName: playersTable,
+        Key: { playerId },
+        UpdateExpression: "SET username = :username",
+        ExpressionAttributeValues: { ":username": username },
+        ConditionExpression: "attribute_exists(playerId)",
+        ReturnValues: "ALL_NEW",
+      }));
+      return response(200, result.Attributes);
+    }
+
+    if (method === "DELETE") {
+      await deleteBets(playerId);
+      await dynamodb.send(new DeleteCommand({ TableName: playersTable, Key: { playerId } }));
+      return { statusCode: 204 };
+    }
+
+    return response(405, { error: "method_not_allowed" });
+  } catch (error) {
+    if (error?.name === "ConditionalCheckFailedException") return response(404, { error: "player_not_found" });
+    console.error("player_request_failed", error);
+    return response(500, { error: "internal_error" });
   }
-
-  const player = {
-    playerId: randomUUID(),
-    score: 0,
-    createdAt: new Date().toISOString(),
-  };
-
-  await dynamodb.send(
-    new PutCommand({
-      TableName: tableName,
-      Item: player,
-      ConditionExpression: "attribute_not_exists(playerId)",
-    }),
-  );
-
-  return response(201, player);
 };
