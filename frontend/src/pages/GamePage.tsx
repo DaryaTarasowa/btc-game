@@ -5,7 +5,7 @@ import { PriceChart } from "../components/PriceChart/PriceChart";
 import { usePlayer } from "../context/usePlayer";
 import { useLivePrices, useRecentPrices } from "../queries/useRecentPrices";
 import { useCreateBet } from "../queries/useCreateBet";
-import { useStoredActiveBet } from "../queries/useStoredActiveBet";
+import { useBetSynchronization } from "../queries/useBetSynchronization";
 import { usePlayerScore } from "../queries/usePlayerScore";
 
 function useBetCountdown(targetTimestamp?: string) {
@@ -28,8 +28,8 @@ export function GamePage() {
   useLivePrices();
   const prices = recentPrices.data ?? [];
   const latestVisiblePoint = prices.at(-1);
-  const [activeBet, setActiveBet] = useStoredActiveBet(playerId);
-  const createBet = useCreateBet(setActiveBet);
+  const { activeBet, resolvedBet, isRecovering, trackCreatedBet } = useBetSynchronization(playerId);
+  const createBet = useCreateBet(trackCreatedBet);
   const secondsRemaining = useBetCountdown(activeBet?.resolutionTargetTimestamp);
   const playerScore = usePlayerScore(playerId);
 
@@ -62,8 +62,15 @@ export function GamePage() {
             </small>
           </div>
         )}
+        {resolvedBet && (
+          <div className={`active-bet active-bet--${resolvedBet.direction}`}>
+            <span>BET RESOLVED</span>
+            <strong>{resolvedBet.result === "won" ? "YOU WON" : "YOU LOST"}</strong>
+            <small>${Number(resolvedBet.startPrice).toLocaleString()} → ${Number(resolvedBet.endPrice).toLocaleString()}</small>
+          </div>
+        )}
         <GameControls
-          disabled={!playerId || !latestVisiblePoint || createBet.isPending || Boolean(activeBet)}
+          disabled={!playerId || !latestVisiblePoint || isRecovering || createBet.isPending || Boolean(activeBet)}
           onChoose={(direction) => {
             if (!playerId || !latestVisiblePoint) return;
             createBet.mutate({ direction, point: latestVisiblePoint });
