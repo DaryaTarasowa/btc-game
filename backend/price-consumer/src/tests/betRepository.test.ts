@@ -3,7 +3,12 @@ import test from "node:test";
 import type { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import { QueryCommand, TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
 import { BetRepository, type ActiveBet } from "../betRepository.js";
-import { BetDirection, BetResult, BetStatus, ResolutionWriteResult } from "../domain.js";
+import {
+  BetDirection,
+  BetResult,
+  BetStatus,
+  ResolutionWriteResult,
+} from "../domain.js";
 
 const activeBet: ActiveBet = {
   betId: "bet-1",
@@ -25,7 +30,11 @@ test("queries active bets through the resolution-target GSI", async () => {
       return { Items: [activeBet] };
     },
   } as unknown as DynamoDBDocumentClient;
-  const repository = new BetRepository("btc-game-bets", "btc-game-players", client);
+  const repository = new BetRepository(
+    "btc-game-bets",
+    "btc-game-players",
+    client,
+  );
 
   assert.deepEqual(
     await repository.queryActiveThrough("2026-08-20T12:01:05.000000000Z"),
@@ -33,7 +42,10 @@ test("queries active bets through the resolution-target GSI", async () => {
   );
   assert.ok(commands[0] instanceof QueryCommand);
   assert.equal(commands[0].input.IndexName, "status-resolution-target-index");
-  assert.match(commands[0].input.KeyConditionExpression ?? "", /<= :upperBound/);
+  assert.match(
+    commands[0].input.KeyConditionExpression ?? "",
+    /<= :upperBound/,
+  );
 });
 
 test("atomically resolves the stable bet item and updates its player", async () => {
@@ -44,7 +56,11 @@ test("atomically resolves the stable bet item and updates its player", async () 
       return {};
     },
   } as unknown as DynamoDBDocumentClient;
-  const repository = new BetRepository("btc-game-bets", "btc-game-players", client);
+  const repository = new BetRepository(
+    "btc-game-bets",
+    "btc-game-players",
+    client,
+  );
 
   assert.equal(
     await repository.resolveBetConditionally(activeBet, {
@@ -61,7 +77,10 @@ test("atomically resolves the stable bet item and updates its player", async () 
     betId: activeBet.betId,
   });
   assert.equal(betUpdate?.Update?.ConditionExpression, "#status = :active");
-  assert.match(betUpdate?.Update?.UpdateExpression ?? "", /#status = :resolved/);
+  assert.match(
+    betUpdate?.Update?.UpdateExpression ?? "",
+    /#status = :resolved/,
+  );
   assert.deepEqual(betUpdate?.Update?.ExpressionAttributeValues, {
     ":active": "active",
     ":resolved": "resolved",
@@ -87,7 +106,11 @@ test("a loss subtracts one point in the resolution transaction", async () => {
       return {};
     },
   } as unknown as DynamoDBDocumentClient;
-  const repository = new BetRepository("btc-game-bets", "btc-game-players", client);
+  const repository = new BetRepository(
+    "btc-game-bets",
+    "btc-game-players",
+    client,
+  );
 
   await repository.resolveBetConditionally(activeBet, {
     endPrice: "99",
@@ -113,7 +136,11 @@ test("a failed active condition is treated as already resolved", async () => {
       throw error;
     },
   } as unknown as DynamoDBDocumentClient;
-  const repository = new BetRepository("btc-game-bets", "btc-game-players", client);
+  const repository = new BetRepository(
+    "btc-game-bets",
+    "btc-game-players",
+    client,
+  );
 
   assert.equal(
     await repository.resolveBetConditionally(activeBet, {
@@ -139,7 +166,11 @@ test("a stale player activeBetId is treated as an already completed resolution",
       throw error;
     },
   } as unknown as DynamoDBDocumentClient;
-  const repository = new BetRepository("btc-game-bets", "btc-game-players", client);
+  const repository = new BetRepository(
+    "btc-game-bets",
+    "btc-game-players",
+    client,
+  );
 
   assert.equal(
     await repository.resolveBetConditionally(activeBet, {
