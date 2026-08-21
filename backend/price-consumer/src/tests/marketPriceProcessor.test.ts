@@ -155,7 +155,8 @@ test("does not publish a point skipped by the history sampler", async () => {
 });
 
 test("stores and publishes the exact event selected for bet resolution even inside the sampling interval", async () => {
-  const { processor, repository, publisher, betResolver } = await createProcessor();
+  const { processor, repository, publisher, betResolver } =
+    await createProcessor();
   betResolver.resolutionEventTimestamp = "2026-08-19T10:00:00.500Z";
   processor.process(marketPrice("100", "2026-08-19T10:00:00.000Z"));
   processor.process(marketPrice("101", "2026-08-19T10:00:00.500Z"));
