@@ -6,7 +6,7 @@ import type { ResolvedBet } from "@/api/bets";
 import { HistoryBetList } from "@/components/HistoryView/HistoryBetList";
 import { BetDirection, BetResult, BetStatus } from "@/domain/bets";
 
-vi.mock("@/components/HistoryPanel/HistoryBetChart", () => ({
+vi.mock("@/components/HistoryView/HistoryBetChart", () => ({
   HistoryBetChart: ({ bet }: { bet: ResolvedBet }) => (
     <div>Chart for {bet.betId}</div>
   ),
