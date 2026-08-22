@@ -6,7 +6,7 @@ import {
 import { AppLayout } from "@/components/AppLayout";
 import { GameWorkspaceLayout } from "@/components/GameWorkspaceLayout";
 import { HistoryPanel } from "@/components/HistoryPanel/HistoryPanel";
-import { MarketPanel } from "@/components/MarketPanel/MarketPanel";
+import { ActiveBetChart } from "@/components/ActiveBetChart/ActiveBetChart";
 
 const rootRoute = createRootRoute({ component: AppLayout });
 const gameWorkspaceRoute = createRoute({
@@ -17,7 +17,7 @@ const gameWorkspaceRoute = createRoute({
 const marketRoute = createRoute({
   getParentRoute: () => gameWorkspaceRoute,
   path: "/",
-  component: MarketPanel,
+  component: ActiveBetChart,
 });
 const historyRoute = createRoute({
   getParentRoute: () => gameWorkspaceRoute,

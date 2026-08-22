@@ -1,240 +1,310 @@
-import { useEffect, useRef } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import {
   AreaSeries,
   ColorType,
   CrosshairMode,
   createChart,
-  createSeriesMarkers,
   type IChartApi,
   type IPriceLine,
-  type ISeriesMarkersPluginApi,
   type ISeriesApi,
-  LineStyle,
-  type Time,
   type UTCTimestamp,
 } from "lightweight-charts";
-import type { ActiveBet, ResolvedBet } from "@/api/bets";
 import type { MarketPrice } from "@/api/prices";
-import { BetDirection, BetResult, BetStatus } from "@/domain/bets";
 import { marketProductDisplayName } from "@/config/market";
+import {
+  createPriceChartTheme,
+  type PriceChartColors,
+  type PriceChartTheme,
+} from "@/components/PriceChart/PriceChart.style";
+import {
+  toChartData,
+  priceFormatter,
+  timeFormatter,
+  toUnixTimestamp,
+  toPriceLineOptions,
+  positionGuide,
+  extendSeriesToRangeEnd,
+  replaceReferencePriceLines,
+  type PriceChartReferenceLine,
+  type PriceChartGuide,
+  type PriceChartRange,
+  type PriceChartAnnotation,
+  type PriceChartTone,
+} from "@/components/PriceChart/priceChartUtils";
 
-interface PriceChartProps {
+const chartStateStyle =
+  "grid place-content-center justify-items-center gap-2 rounded-3xl border p-8 text-center";
+
+const defaultStateSize = "min-h-[490px] max-[820px]:min-h-80";
+
+const chartFrameStyle =
+  "min-w-0 overflow-hidden rounded-3xl border transition-[border-color,box-shadow,background] duration-200";
+
+const chartHeaderStyle =
+  "flex items-start justify-between gap-6 px-7 pt-6 pb-2 max-[560px]:px-4.5 max-[560px]:pt-5 max-[560px]:pb-1.5";
+
+const tooltipStyle =
+  "pointer-events-none absolute z-[2] min-w-[130px] rounded-[10px] border px-3 py-2.5 [&_span]:mt-0.5 [&_span]:block [&_span]:text-xs [&_strong]:block [&_strong]:text-sm [&_strong]:[font-variant-numeric:tabular-nums]";
+
+const verticalGuideStyle =
+  "pointer-events-none absolute inset-y-0 z-[2] w-0 border-l border-dotted border-current opacity-50";
+
+const guideDotStyle =
+  "pointer-events-none absolute z-[3] size-[11px] -translate-1/2 rounded-full border-2 bg-current shadow-[0_0_0_2px_currentColor]";
+
+export interface PriceChartProps {
+  prices?: MarketPrice[];
+
+  headlinePrice?: string;
+  headlineLabel?: ReactNode;
+  subtitle?: ReactNode;
+  annotation?: PriceChartAnnotation;
+  tone?: PriceChartTone;
+
+  visibleRange?: PriceChartRange;
+  referenceLines?: PriceChartReferenceLine[];
+  guides?: PriceChartGuide[];
+  priorityTimestamps?: string[];
+
+  colors?: Partial<PriceChartColors>;
+
+  isPending?: boolean;
+  error?: Error | null;
+  messages?: Partial<PriceChartStateMessages>;
+  stateClassName?: string;
+}
+
+type ChartRendererProps = Omit<
+  PriceChartProps,
+  "isPending" | "error" | "messages" | "stateClassName" | "colors"
+> & {
   prices: MarketPrice[];
-  bet?: ActiveBet | ResolvedBet | null;
-  staticHistory?: boolean;
+  theme: PriceChartTheme;
+};
+
+interface PriceChartStateMessages {
+  loading: ReactNode;
+  empty: ReactNode;
+  error: ReactNode;
 }
 
-const priceFormatter = new Intl.NumberFormat(undefined, {
-  style: "currency",
-  currency: "USD",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
+export function PriceChart(props: PriceChartProps) {
+  const {
+    prices = [],
+    colors,
+    isPending = false,
+    error = null,
+    messages,
+    stateClassName = defaultStateSize,
+  } = props;
+  const theme = useMemo(
+    () => createPriceChartTheme(colors),
+    [
+      colors?.accent,
+      colors?.graph,
+      colors?.background,
+      colors?.surface,
+      colors?.border,
+      colors?.text,
+      colors?.mutedText,
+    ],
+  );
 
-const timeFormatter = new Intl.DateTimeFormat(undefined, {
-  hour: "2-digit",
-  minute: "2-digit",
-  second: "2-digit",
-});
-
-export function toChartData(prices: MarketPrice[], authoritativeTimestamps: string[] = []) {
-  const points = new Map<number, MarketPrice>();
-  const authoritative = new Set(authoritativeTimestamps);
-
-  for (const price of prices) {
-    const time = Math.floor(Date.parse(price.eventTimestamp) / 1000);
-    const existing = points.get(time);
-    if (
-      !existing ||
-      authoritative.has(price.eventTimestamp) ||
-      !authoritative.has(existing.eventTimestamp)
-    ) {
-      points.set(time, price);
-    }
+  if (isPending) {
+    return (
+      <PriceChartState className={stateClassName} role="status" theme={theme}>
+        {messages?.loading ?? "Loading market prices…"}
+      </PriceChartState>
+    );
   }
 
-  return [...points.entries()]
-    .sort(([left], [right]) => left - right)
-    .map(([time, price]) => ({
-      time: time as UTCTimestamp,
-      value: Number(price.price),
-      eventTimestamp: price.eventTimestamp,
-    }));
+  if (error) {
+    return (
+      <PriceChartState className={stateClassName} role="alert" theme={theme}>
+        <span style={{ color: "red" }}>{messages?.error ?? error.message}</span>
+      </PriceChartState>
+    );
+  }
+
+  if (prices.length === 0) {
+    return (
+      <PriceChartState className={stateClassName} role="status" theme={theme}>
+        {messages?.empty ?? "No market prices are available."}
+      </PriceChartState>
+    );
+  }
+
+  return (
+    <ChartRenderer
+      prices={prices}
+      headlinePrice={props.headlinePrice}
+      headlineLabel={props.headlineLabel}
+      subtitle={props.subtitle}
+      annotation={props.annotation}
+      tone={props.tone}
+      visibleRange={props.visibleRange}
+      referenceLines={props.referenceLines}
+      guides={props.guides}
+      priorityTimestamps={props.priorityTimestamps}
+      theme={theme}
+    />
+  );
 }
 
-export function chartHeadlinePrice(
-  prices: MarketPrice[],
-  bet: ActiveBet | ResolvedBet | null | undefined,
-  staticHistory: boolean,
-): string | undefined {
-  if (staticHistory && bet?.status === BetStatus.Resolved) return bet.endPrice;
-  return prices.at(-1)?.price;
+function PriceChartState({
+  className,
+  role,
+  children,
+  theme,
+}: {
+  className: string;
+  role: "status" | "alert";
+  children: ReactNode;
+  theme: PriceChartTheme;
+}) {
+  return (
+    <div
+      className={`${chartStateStyle} ${className}`}
+      role={role}
+      style={{
+        background: theme.state.background,
+        borderColor: theme.state.border,
+        color: theme.colors.mutedText,
+      }}
+    >
+      {children}
+    </div>
+  );
 }
 
-function resultColor(bet: ResolvedBet) {
-  return bet.result === BetResult.Won ? "#35d59a" : "#ff6877";
-}
-
-export function betGraphColor(bet: ActiveBet | ResolvedBet) {
-  return bet.direction === BetDirection.Up ? "#35d59a" : "#ff6877";
-}
-
-export function staticGraphFillColors(bet: ResolvedBet) {
-  return bet.direction === BetDirection.Up
-    ? { top: "rgba(53, 213, 154, 0.28)", bottom: "rgba(53, 213, 154, 0.015)" }
-    : { top: "rgba(255, 104, 119, 0.28)", bottom: "rgba(255, 104, 119, 0.015)" };
-}
-
-export function referencePriceLineOptions(
-  bet: ActiveBet | ResolvedBet | null | undefined,
-  staticHistory: boolean,
+function createPriceChartInstance(
+  container: HTMLDivElement,
+  theme: PriceChartTheme,
 ) {
-  if (!bet) return [];
-  if (!staticHistory && bet.status === BetStatus.Active) {
-    return [{ price: Number(bet.startPrice), color: betGraphColor(bet), lineWidth: 1 as const, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: "Placed" }];
-  }
-  if (!staticHistory || bet.status !== BetStatus.Resolved) return [];
-  const color = resultColor(bet);
-  return [
-    { price: Number(bet.startPrice), color, lineWidth: 1 as const, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: "Placed" },
-    { price: Number(bet.endPrice), color, lineWidth: 1 as const, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: "Resolved" },
-  ];
+  const chart = createChart(container, {
+    width: container.clientWidth,
+    height: 390,
+    layout: {
+      background: { type: ColorType.Solid, color: "transparent" },
+      textColor: theme.colors.mutedText,
+      fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
+    },
+    grid: {
+      vertLines: { color: theme.grid },
+      horzLines: { color: theme.grid },
+    },
+    crosshair: {
+      mode: CrosshairMode.Normal,
+      vertLine: {
+        color: theme.crosshair,
+        labelBackgroundColor: theme.colors.accent,
+      },
+      horzLine: {
+        color: theme.crosshair,
+        labelBackgroundColor: theme.colors.accent,
+      },
+    },
+    rightPriceScale: {
+      borderColor: theme.axisBorder,
+      scaleMargins: { top: 0.12, bottom: 0.12 },
+      autoScale: true,
+    },
+    timeScale: {
+      borderColor: theme.axisBorder,
+      timeVisible: true,
+      secondsVisible: false,
+      rightOffset: 2,
+    },
+    localization: {
+      priceFormatter: (price: number) => priceFormatter.format(price),
+    },
+    handleScroll: false,
+    handleScale: { axisPressedMouseMove: false },
+  });
+
+  const series = chart.addSeries(AreaSeries, {
+    lineColor: theme.colors.graph,
+    topColor: theme.fill.top,
+    bottomColor: theme.fill.bottom,
+    lineWidth: 2,
+    crosshairMarkerBackgroundColor: theme.colors.accent,
+    crosshairMarkerBorderColor: theme.colors.text,
+    priceLineColor: theme.colors.accent,
+    priceLineWidth: 1,
+    lastValueVisible: true,
+    priceLineVisible: true,
+  });
+
+  return { chart, series };
 }
 
-export function activeBetChartRange(bet: ActiveBet) {
-  return {
-    from: Math.floor((Date.parse(bet.startEventTimestamp) - 5_000) / 1_000) as UTCTimestamp,
-    to: Math.floor(Date.parse(bet.resolutionTargetTimestamp) / 1_000) as UTCTimestamp,
-  };
-}
-
-export function betGuideColors(bet: ActiveBet | ResolvedBet) {
-  const annotationColor = bet.status === BetStatus.Resolved ? resultColor(bet) : betGraphColor(bet);
-  return {
-    creation: annotationColor,
-    resolution: annotationColor,
-  };
-}
-
-export function PriceChart({ prices, bet, staticHistory = false }: PriceChartProps) {
+function ChartRenderer({
+  prices = [],
+  headlinePrice,
+  headlineLabel = "Latest price",
+  subtitle = "Stored market history · 3 min",
+  annotation,
+  tone = "neutral",
+  visibleRange,
+  referenceLines = [],
+  guides = [],
+  priorityTimestamps = [],
+  theme,
+}: ChartRendererProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
+
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Area"> | null>(null);
-  const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
   const referencePriceLinesRef = useRef<IPriceLine[]>([]);
   const timestampsRef = useRef(new Map<number, string>());
-  const creationGuideRef = useRef<HTMLDivElement>(null);
-  const resolutionGuideRef = useRef<HTMLDivElement>(null);
-  const creationDotRef = useRef<HTMLDivElement>(null);
-  const resolutionDotRef = useRef<HTMLDivElement>(null);
-  const betRef = useRef(bet);
-  const staticHistoryRef = useRef(staticHistory);
-  betRef.current = bet;
-  staticHistoryRef.current = staticHistory;
 
-  function positionHistoryGuides() {
+  const firstGuideRef = useRef<HTMLDivElement>(null);
+  const secondGuideRef = useRef<HTMLDivElement>(null);
+  const firstDotRef = useRef<HTMLDivElement>(null);
+  const secondDotRef = useRef<HTMLDivElement>(null);
+
+  const guidesRef = useRef(guides);
+  guidesRef.current = guides;
+
+  const positionGuides = useCallback(() => {
     const chart = chartRef.current;
     const series = seriesRef.current;
-    const currentBet = betRef.current;
-    if (!chart || !series || !currentBet) return;
+    const [firstGuide, secondGuide] = guidesRef.current;
 
-    const creationX = chart.timeScale().timeToCoordinate(
-      Math.floor(Date.parse(currentBet.startEventTimestamp) / 1_000) as UTCTimestamp,
-    );
-    const resolutionTimestamp = currentBet.status === BetStatus.Resolved
-      ? currentBet.endEventTimestamp
-      : currentBet.resolutionTargetTimestamp;
-    const resolutionX = chart.timeScale().timeToCoordinate(
-      Math.floor(Date.parse(resolutionTimestamp) / 1_000) as UTCTimestamp,
-    );
-    const creationY = series.priceToCoordinate(Number(currentBet.startPrice));
-    const resolutionY = currentBet.status === BetStatus.Resolved
-      ? series.priceToCoordinate(Number(currentBet.endPrice))
-      : null;
+    if (!chart || !series) return;
 
-    if (creationGuideRef.current && creationX !== null) creationGuideRef.current.style.left = `${creationX}px`;
-    if (resolutionGuideRef.current && resolutionX !== null) resolutionGuideRef.current.style.left = `${resolutionX}px`;
-    if (creationDotRef.current && creationX !== null && creationY !== null) {
-      creationDotRef.current.style.left = `${creationX}px`;
-      creationDotRef.current.style.top = `${creationY}px`;
-    }
-    if (resolutionDotRef.current && resolutionX !== null && resolutionY !== null) {
-      resolutionDotRef.current.style.left = `${resolutionX}px`;
-      resolutionDotRef.current.style.top = `${resolutionY}px`;
-    }
-  }
+    positionGuide(chart, series, firstGuide, firstGuideRef, firstDotRef);
+    positionGuide(chart, series, secondGuide, secondGuideRef, secondDotRef);
+  }, []);
 
+  // Creates and owns the Lightweight Charts instance.
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    const chart = createChart(container, {
-      width: container.clientWidth,
-      height: 390,
-      layout: {
-        background: { type: ColorType.Solid, color: "transparent" },
-        textColor: "#8f9bb5",
-        fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
-      },
-      grid: {
-        vertLines: { color: "rgba(255, 255, 255, 0.045)" },
-        horzLines: { color: "rgba(255, 255, 255, 0.06)" },
-      },
-      crosshair: {
-        mode: CrosshairMode.Normal,
-        vertLine: {
-          color: "rgba(247, 147, 26, 0.65)",
-          labelBackgroundColor: "#f7931a",
-        },
-        horzLine: {
-          color: "rgba(247, 147, 26, 0.4)",
-          labelBackgroundColor: "#f7931a",
-        },
-      },
-      rightPriceScale: {
-        borderColor: "rgba(255, 255, 255, 0.1)",
-        scaleMargins: { top: 0.12, bottom: 0.12 },
-        autoScale: true,
-      },
-      timeScale: {
-        borderColor: "rgba(255, 255, 255, 0.1)",
-        timeVisible: true,
-        secondsVisible: false,
-        rightOffset: 2,
-      },
-      localization: {
-        priceFormatter: (price: number) => priceFormatter.format(price),
-      },
-      handleScroll: false,
-      handleScale: { axisPressedMouseMove: false },
-    });
-
-    const series = chart.addSeries(AreaSeries, {
-      lineColor: "#f7a52b",
-      topColor: "rgba(247, 147, 26, 0.34)",
-      bottomColor: "rgba(247, 147, 26, 0.015)",
-      lineWidth: 2,
-      crosshairMarkerBackgroundColor: "#f7931a",
-      crosshairMarkerBorderColor: "#fff2d9",
-      priceLineColor: "#f7931a",
-      priceLineWidth: 1,
-      lastValueVisible: true,
-      priceLineVisible: true,
-    });
+    const { chart, series } = createPriceChartInstance(container, theme);
 
     chartRef.current = chart;
     seriesRef.current = series;
-    markersRef.current = createSeriesMarkers(series, []);
 
     chart.subscribeCrosshairMove((parameter) => {
       const tooltip = tooltipRef.current;
+
       if (!tooltip || !parameter.point || !parameter.time) {
         if (tooltip) tooltip.hidden = true;
         return;
       }
 
       const data = parameter.seriesData.get(series);
+
       if (!data || !("value" in data)) {
         tooltip.hidden = true;
         return;
@@ -242,164 +312,295 @@ export function PriceChart({ prices, bet, staticHistory = false }: PriceChartPro
 
       const unixTime = parameter.time as number;
       const timestamp = timestampsRef.current.get(unixTime);
-      tooltip.innerHTML = `<strong>${priceFormatter.format(data.value)}</strong><span>${timeFormatter.format(new Date(timestamp ?? unixTime * 1000))}</span>`;
+
+      tooltip.innerHTML =
+        `<strong>${priceFormatter.format(data.value)}</strong>` +
+        `<span>${timeFormatter.format(
+          new Date(timestamp ?? unixTime * 1_000),
+        )}</span>`;
+
       tooltip.hidden = false;
-      tooltip.style.left = `${Math.min(Math.max(parameter.point.x + 14, 8), container.clientWidth - tooltip.offsetWidth - 8)}px`;
-      tooltip.style.top = `${Math.max(parameter.point.y - tooltip.offsetHeight - 14, 8)}px`;
+      tooltip.style.left = `${Math.min(
+        Math.max(parameter.point.x + 14, 8),
+        container.clientWidth - tooltip.offsetWidth - 8,
+      )}px`;
+      tooltip.style.top = `${Math.max(
+        parameter.point.y - tooltip.offsetHeight - 14,
+        8,
+      )}px`;
     });
 
     const resizeObserver = new ResizeObserver(([entry]) => {
-      if (entry) {
-        chart.applyOptions({ width: Math.floor(entry.contentRect.width) });
-        requestAnimationFrame(positionHistoryGuides);
-      }
+      if (!entry) return;
+
+      chart.applyOptions({
+        width: Math.floor(entry.contentRect.width),
+      });
+
+      requestAnimationFrame(positionGuides);
     });
+
     resizeObserver.observe(container);
-    chart.timeScale().subscribeVisibleLogicalRangeChange(positionHistoryGuides);
+    chart.timeScale().subscribeVisibleLogicalRangeChange(positionGuides);
 
     return () => {
-      chart.timeScale().unsubscribeVisibleLogicalRangeChange(positionHistoryGuides);
+      chart.timeScale().unsubscribeVisibleLogicalRangeChange(positionGuides);
       resizeObserver.disconnect();
       chart.remove();
+
       chartRef.current = null;
       seriesRef.current = null;
-      markersRef.current = null;
       referencePriceLinesRef.current = [];
     };
-  }, []);
+  }, [positionGuides, theme]);
 
+  // Synchronizes chart data, reference lines, colors, and visible range with the latest props.
   useEffect(() => {
-    const series = seriesRef.current;
     const chart = chartRef.current;
-    if (!series || !chart) return;
+    const series = seriesRef.current;
 
-    const authoritativeTimestamps = staticHistory && bet?.status === BetStatus.Resolved
-      ? [bet.startEventTimestamp, bet.endEventTimestamp]
-      : [];
-    const chartData = toChartData(prices, authoritativeTimestamps);
+    if (!chart || !series) return;
+
+    const chartData = toChartData(prices, priorityTimestamps);
 
     timestampsRef.current = new Map(
       chartData.map((point) => [point.time, point.eventTimestamp]),
     );
 
-    const seriesData = chartData.map(({ time, value }) => ({
-        time,
-        value,
-      }));
-    if (!staticHistory && bet?.status === BetStatus.Active) {
-      const targetTime = activeBetChartRange(bet).to;
-      const activeSeriesData = seriesData.some(({ time }) => time === targetTime)
-        ? seriesData
-        : [...seriesData, { time: targetTime }];
-      activeSeriesData.sort((left, right) => Number(left.time) - Number(right.time));
-      series.setData(activeSeriesData);
-    } else {
-      series.setData(seriesData);
-    }
+    const seriesData: Array<{
+      time: UTCTimestamp;
+      value?: number;
+    }> = chartData.map(({ time, value }) => ({
+      time,
+      value,
+    }));
 
-    const guideColors = bet ? betGuideColors(bet) : null;
-    markersRef.current?.setMarkers(
-      [],
+    series.setData(extendSeriesToRangeEnd(seriesData, visibleRange));
+
+    replaceReferencePriceLines(
+      series,
+      referencePriceLinesRef,
+      toPriceLineOptions(referenceLines),
     );
 
-    for (const line of referencePriceLinesRef.current) series.removePriceLine(line);
-    const referenceLines = referencePriceLineOptions(bet, staticHistory);
-    referencePriceLinesRef.current = referenceLines.map((line) => series.createPriceLine(line));
-    const staticFill = staticHistory && bet?.status === BetStatus.Resolved ? staticGraphFillColors(bet) : null;
+    const hasReferenceLines = referenceLines.length > 0;
 
     series.applyOptions({
-      lineColor: bet
-        ? betGraphColor(bet)
-        : "#f7a52b",
-      priceLineColor: bet
-        ? betGraphColor(bet)
-        : "#f7931a",
-      priceLineVisible: referenceLines.length === 0,
-      lastValueVisible: referenceLines.length === 0,
-      topColor: staticFill?.top ?? "rgba(247, 147, 26, 0.34)",
-      bottomColor: staticFill?.bottom ?? "rgba(247, 147, 26, 0.015)",
-      crosshairMarkerBackgroundColor: staticHistory && bet ? betGraphColor(bet) : "#f7931a",
+      lineColor: theme.colors.graph,
+      priceLineColor: theme.colors.accent,
+      priceLineVisible: !hasReferenceLines,
+      lastValueVisible: !hasReferenceLines,
+      topColor: theme.fill.top,
+      bottomColor: theme.fill.bottom,
+      crosshairMarkerBackgroundColor: theme.colors.accent,
     });
 
-    if (!staticHistory && bet?.status === BetStatus.Active) {
-      chart.timeScale().setVisibleRange(activeBetChartRange(bet));
+    if (visibleRange) {
+      chart.timeScale().setVisibleRange({
+        from: toUnixTimestamp(visibleRange.from),
+        to: toUnixTimestamp(visibleRange.to),
+      });
     } else {
       chart.timeScale().fitContent();
     }
-    const animationFrame = requestAnimationFrame(positionHistoryGuides);
-    return () => cancelAnimationFrame(animationFrame);
-  }, [bet, prices, staticHistory]);
 
-  const headlinePrice = chartHeadlinePrice(prices, bet, staticHistory);
-  const guideColors = bet ? betGuideColors(bet) : null;
-  const visualState = bet
-    ? staticHistory && bet.status === BetStatus.Resolved ? bet.result : bet.direction
-    : null;
-  const stateClass = visualState === BetDirection.Up || visualState === BetResult.Won
-    ? "border-up/50 bg-[linear-gradient(150deg,rgba(17,49,42,0.96),rgba(12,16,27,0.96)_58%)] shadow-[0_24px_80px_rgba(0,0,0,0.32),0_0_38px_rgba(53,213,154,0.12)]"
-    : visualState === BetDirection.Down || visualState === BetResult.Lost
-      ? "border-down/50 bg-[linear-gradient(150deg,rgba(55,25,35,0.96),rgba(12,16,27,0.96)_58%)] shadow-[0_24px_80px_rgba(0,0,0,0.32),0_0_38px_rgba(255,104,119,0.12)]"
-      : "border-white/10 bg-[linear-gradient(150deg,rgba(22,28,43,0.96),rgba(12,16,27,0.96))] shadow-[0_24px_80px_rgba(0,0,0,0.32)]";
-  const annotationTextClass = visualState === BetDirection.Up || visualState === BetResult.Won ? "text-up" : "text-down";
-  const product = bet?.product ?? prices[0]?.product;
+    const frame = requestAnimationFrame(positionGuides);
+    return () => cancelAnimationFrame(frame);
+  }, [
+    priorityTimestamps,
+    positionGuides,
+    prices,
+    referenceLines,
+    theme,
+    visibleRange,
+  ]);
+
+  const product = prices[0]?.product;
+  const displayedPrice = headlinePrice ?? prices.at(-1)?.price;
 
   return (
     <section
-      className={`min-w-0 overflow-hidden rounded-3xl border transition-[border-color,box-shadow,background] duration-200 ${stateClass}`}
+      className={chartFrameStyle}
+      style={theme.frame}
+      //style={{ border: "3px red solid" }}
       aria-label={`${product ? marketProductDisplayName(product) : "Market"} price chart`}
     >
-      <header className="flex items-start justify-between gap-6 px-7 pt-6 pb-2 max-[560px]:px-4.5 max-[560px]:pt-5 max-[560px]:pb-1.5">
-        <div>
-          <p className="m-0 text-base font-extrabold tracking-[0.04em] text-slate-50">
-            <span className="text-bitcoin" aria-hidden="true">₿</span> {product ? marketProductDisplayName(product) : "—"}
-          </p>
-          <p className="mt-1.5 mb-0 text-xs text-[#77839e]">{staticHistory ? "Stored bet window" : "Stored market history · 3 min"}</p>
-          {bet && (
-            <p className={`mt-2 mb-0 text-xs font-extrabold tracking-[0.08em] uppercase ${annotationTextClass}`}>
-              <span className="mr-1 inline-block size-[7px] rounded-full bg-current shadow-[0_0_0_0_currentColor] motion-safe:animate-[bet-pulse_1.6s_infinite]" aria-hidden="true" /> {bet.status === BetStatus.Resolved ? `${bet.result.toUpperCase()} ${bet.direction.toUpperCase()} prediction` : `${bet.direction.toUpperCase()} position active`}
-            </p>
-          )}
-        </div>
-        <div className="text-right">
-          <span className="block text-xs tracking-[0.1em] text-[#77839e] uppercase">{staticHistory ? "Resolution price" : "Latest price"}</span>
-          <strong className="mt-1 block text-[clamp(1.35rem,3vw,2rem)] text-white [font-variant-numeric:tabular-nums] max-[560px]:text-xl">
-            {headlinePrice ? priceFormatter.format(Number(headlinePrice)) : "—"}
-          </strong>
-        </div>
-      </header>
+      <ChartHeader
+        product={product}
+        headlinePrice={displayedPrice}
+        headlineLabel={headlineLabel}
+        subtitle={subtitle}
+        annotation={annotation}
+        theme={theme}
+      />
+
       <div className="relative min-h-[390px] w-full" ref={containerRef}>
-        <div className="pointer-events-none absolute z-[2] min-w-[130px] rounded-[10px] border border-bitcoin/35 bg-[#080b12]/95 px-3 py-2.5 shadow-[0_8px_28px_rgba(0,0,0,0.4)] [&_span]:mt-0.5 [&_span]:block [&_span]:text-xs [&_span]:text-slate-400 [&_strong]:block [&_strong]:text-sm [&_strong]:text-white [&_strong]:[font-variant-numeric:tabular-nums]" ref={tooltipRef} hidden />
-        {bet && guideColors && (staticHistory ? bet.status === BetStatus.Resolved : bet.status === BetStatus.Active) && (
-          <>
-            <div
-              className="pointer-events-none absolute inset-y-0 z-[2] w-0 border-l border-dotted border-current opacity-50"
-              ref={creationGuideRef}
-              style={{ color: guideColors.creation }}
-              aria-hidden="true"
-            />
-            <div
-              className="pointer-events-none absolute inset-y-0 z-[2] w-0 border-l border-dotted border-current opacity-50"
-              ref={resolutionGuideRef}
-              style={{ color: guideColors.resolution ?? undefined }}
-              aria-hidden="true"
-            />
-            <div
-              className="pointer-events-none absolute z-[3] size-[11px] -translate-1/2 rounded-full border-2 border-[#101521] bg-current shadow-[0_0_0_2px_currentColor]"
-              ref={creationDotRef}
-              style={{ color: guideColors.creation }}
-              aria-hidden="true"
-            />
-            {bet.status === BetStatus.Resolved && (
-              <div
-                className="pointer-events-none absolute z-[3] size-[11px] -translate-1/2 rounded-full border-2 border-[#101521] bg-current shadow-[0_0_0_2px_currentColor]"
-                ref={resolutionDotRef}
-                style={{ color: guideColors.resolution ?? undefined }}
-                aria-hidden="true"
-              />
-            )}
-          </>
-        )}
+        <div
+          className={tooltipStyle}
+          ref={tooltipRef}
+          hidden
+          style={{
+            background: theme.tooltip.background,
+            borderColor: theme.tooltip.border,
+            boxShadow: theme.tooltip.shadow,
+            color: theme.colors.text,
+          }}
+        />
+
+        <ChartGuides
+          guides={guides}
+          theme={theme}
+          refs={{
+            firstGuide: firstGuideRef,
+            secondGuide: secondGuideRef,
+            firstDot: firstDotRef,
+            secondDot: secondDotRef,
+          }}
+        />
       </div>
     </section>
+  );
+}
+
+interface ChartHeaderProps {
+  product?: string;
+  headlinePrice?: string;
+  headlineLabel: ReactNode;
+  subtitle: ReactNode;
+  annotation?: PriceChartAnnotation;
+  theme: PriceChartTheme;
+}
+
+function ChartHeader({
+  product,
+  headlinePrice,
+  headlineLabel,
+  subtitle,
+  annotation,
+  theme,
+}: ChartHeaderProps) {
+  return (
+    <header className={chartHeaderStyle}>
+      <div>
+        <p
+          className="m-0 text-base font-extrabold tracking-[0.04em]"
+          style={{ color: theme.colors.text }}
+        >
+          <span style={{ color: theme.colors.accent }} aria-hidden="true">
+            ₿
+          </span>{" "}
+          {product ? marketProductDisplayName(product) : "—"}
+        </p>
+
+        <p
+          className="mt-1.5 mb-0 text-xs"
+          style={{ color: theme.colors.mutedText }}
+        >
+          {subtitle}
+        </p>
+
+        {annotation && (
+          <p
+            className="mt-2 mb-0 text-xs font-extrabold tracking-[0.08em] uppercase"
+            style={{ color: annotation.color }}
+          >
+            <span
+              className="mr-1 inline-block size-[7px] rounded-full bg-current animate-[bet-pulse_1.6s_infinite]"
+              aria-hidden="true"
+            />{" "}
+            {annotation.text}
+          </p>
+        )}
+      </div>
+
+      <div className="text-right">
+        <span
+          className="block text-xs tracking-[0.1em] uppercase"
+          style={{ color: theme.colors.mutedText }}
+        >
+          {headlineLabel}
+        </span>
+
+        <strong
+          className="mt-1 block text-[clamp(1.35rem,3vw,2rem)] [font-variant-numeric:tabular-nums] max-[560px]:text-xl"
+          style={{ color: theme.colors.text }}
+        >
+          {headlinePrice ? priceFormatter.format(Number(headlinePrice)) : "—"}
+        </strong>
+      </div>
+    </header>
+  );
+}
+
+interface GuideRefs {
+  firstGuide: RefObject<HTMLDivElement | null>;
+  secondGuide: RefObject<HTMLDivElement | null>;
+  firstDot: RefObject<HTMLDivElement | null>;
+  secondDot: RefObject<HTMLDivElement | null>;
+}
+
+interface ChartGuidesProps {
+  guides: PriceChartGuide[];
+  theme: PriceChartTheme;
+  refs: GuideRefs;
+}
+
+function ChartGuides({ guides, theme, refs }: ChartGuidesProps) {
+  const [firstGuide, secondGuide] = guides;
+
+  if (!firstGuide && !secondGuide) return null;
+
+  return (
+    <>
+      {firstGuide && (
+        <Guide
+          guide={firstGuide}
+          guideRef={refs.firstGuide}
+          dotRef={refs.firstDot}
+          theme={theme}
+        />
+      )}
+
+      {secondGuide && (
+        <Guide
+          guide={secondGuide}
+          guideRef={refs.secondGuide}
+          dotRef={refs.secondDot}
+          theme={theme}
+        />
+      )}
+    </>
+  );
+}
+
+interface GuideProps {
+  guide: PriceChartGuide;
+  guideRef: RefObject<HTMLDivElement | null>;
+  dotRef: RefObject<HTMLDivElement | null>;
+  theme: PriceChartTheme;
+}
+
+function Guide({ guide, guideRef, dotRef, theme }: GuideProps) {
+  return (
+    <>
+      <div
+        className={verticalGuideStyle}
+        ref={guideRef}
+        style={{ color: guide.color }}
+        aria-hidden="true"
+      />
+
+      {guide.price && (
+        <div
+          className={guideDotStyle}
+          ref={dotRef}
+          style={{
+            color: guide.color,
+            borderColor: theme.guideDotBorder,
+          }}
+          aria-hidden="true"
+        />
+      )}
+    </>
   );
 }

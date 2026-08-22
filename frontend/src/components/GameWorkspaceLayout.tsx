@@ -38,18 +38,7 @@ function GameWorkspace() {
       className={`${pageStyle} grid grid-cols-[minmax(260px,0.72fr)_minmax(0,1.8fr)] items-start gap-6 max-[820px]:grid-cols-1`}
     >
       <section className={`${pageCardStyle} max-[820px]:text-left`}>
-        {playerId ? (
-          <GamePanel
-            activeBet={session.activeBet}
-            creationError={session.creationError}
-            isCreating={session.isCreating}
-            isRecovering={session.isRecovering}
-            latestVisiblePoint={session.latestVisiblePoint}
-            onChoose={session.chooseDirection}
-          />
-        ) : (
-          <AuthForm />
-        )}
+        {playerId ? <GamePanel /> : <AuthForm />}
       </section>
 
       <div className="min-w-0" ref={contentPanelRef}>

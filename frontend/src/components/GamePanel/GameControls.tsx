@@ -5,12 +5,12 @@ const betButtonStyle = `${actionButtonStyle} min-w-0 flex-1 enabled:hover:-trans
 
 const upButton = `
   ${betButtonStyle}
-  bg-up text-[#06251b] enabled:hover:bg-[#63e5b5]
+  bg-success text-[#06251b] enabled:hover:bg-[#63e5b5]
 `;
 
 const downButton = `
   ${betButtonStyle}
-  bg-down text-[#2d080b] enabled:hover:bg-[#ff8994]
+  bg-error text-[#2d080b] enabled:hover:bg-[#ff8994]
 `;
 
 interface BetButtonProps {
