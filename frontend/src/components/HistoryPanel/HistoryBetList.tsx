@@ -9,7 +9,7 @@ const dateFormatter = new Intl.DateTimeFormat(undefined, {
 });
 
 const historyBetItemStyle =
-  "relative grid w-full grid-cols-[100px_1fr_auto_28px] items-center gap-3.5 rounded-[14px] border bg-[#080b12]/50 px-4.5 py-4 text-left text-slate-200 max-[820px]:grid-cols-[80px_1fr_24px] hover:border-accent hover:cursor-pointer";
+  "relative grid w-full grid-cols-[100px_1fr_auto_28px] items-center gap-3.5 rounded-[14px] border bg-[#080b12]/50 px-4.5 py-4 text-left text-muted max-[820px]:grid-cols-[80px_1fr_24px] hover:border-accent hover:cursor-pointer";
 
 const chartToggleButtonStyle = `${buttonStyle} grid size-[34px] min-w-0 place-items-center rounded-[9px] bg-accent/10 p-[7px] text-accent hover:bg-accent hover:text-[#171008] max-[820px]:col-start-3 max-[820px]:row-start-1`;
 

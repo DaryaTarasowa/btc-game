@@ -195,6 +195,7 @@ function createPriceChartInstance(
       background: { type: ColorType.Solid, color: "transparent" },
       textColor: theme.colors.mutedText,
       fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
+      attributionLogo: false,
     },
     grid: {
       vertLines: { color: theme.grid },
@@ -219,7 +220,7 @@ function createPriceChartInstance(
     timeScale: {
       borderColor: theme.axisBorder,
       timeVisible: true,
-      secondsVisible: false,
+      secondsVisible: true,
       rightOffset: 2,
     },
     localization: {
@@ -251,7 +252,6 @@ function ChartRenderer({
   headlineLabel = "Latest price",
   subtitle = "Stored market history · 3 min",
   annotation,
-  tone = "neutral",
   visibleRange,
   referenceLines = [],
   guides = [],
@@ -415,14 +415,13 @@ function ChartRenderer({
     visibleRange,
   ]);
 
-  const product = prices[0]?.product;
+  const product = prices[0]?.product; //TODO have this in settings somewhere - all prices have to have the same product
   const displayedPrice = headlinePrice ?? prices.at(-1)?.price;
 
   return (
     <section
       className={chartFrameStyle}
       style={theme.frame}
-      //style={{ border: "3px red solid" }}
       aria-label={`${product ? marketProductDisplayName(product) : "Market"} price chart`}
     >
       <ChartHeader

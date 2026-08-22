@@ -28,7 +28,6 @@ export function GamePanel() {
   );
   const playerScore = usePlayerScore(playerId);
   const previousScoreRef = useRef<number | undefined>(undefined);
-  const [scoreChanged, setScoreChanged] = useState(false);
   const score = playerScore.data?.score;
 
   useEffect(() => {
@@ -37,10 +36,7 @@ export function GamePanel() {
       previousScoreRef.current !== undefined &&
       previousScoreRef.current !== score
     ) {
-      setScoreChanged(true);
-      const timer = window.setTimeout(() => setScoreChanged(false), 700);
       previousScoreRef.current = score;
-      return () => window.clearTimeout(timer);
     }
     previousScoreRef.current = score;
   }, [score]);
@@ -72,7 +68,7 @@ export function GamePanel() {
           <strong className={`${metricValueStyle} text-[2.4rem]`}>
             {secondsRemaining}s
           </strong>
-          <small className="text-slate-400">
+          <small className="text-muted">
             Started at $
             {Number(activeBet.startPrice).toLocaleString(undefined, {
               minimumFractionDigits: 2,
@@ -91,7 +87,7 @@ export function GamePanel() {
         }
         onChoose={onChoose}
       />
-      {creationError && <p className="mt-5.5 text-down">{creationError}</p>}
+      {creationError && <p className="mt-5.5 text-error">{creationError}</p>}
     </>
   );
 }

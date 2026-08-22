@@ -91,7 +91,7 @@ export function ActiveBetChart() {
                 className="mb-1.5 size-[11px] rounded-full bg-accent animate-[market-pulse_1.5s_infinite]"
                 aria-hidden="true"
               />
-              <strong className="text-slate-200">
+              <strong className="text-muted">
                 Loading {productName} market history
               </strong>
               <span>Reading the latest stored trades…</span>
@@ -105,7 +105,7 @@ export function ActiveBetChart() {
           ),
           empty: (
             <>
-              <strong className="text-slate-200">
+              <strong className="text-muted">
                 No recent {productName} prices
               </strong>
               <span>

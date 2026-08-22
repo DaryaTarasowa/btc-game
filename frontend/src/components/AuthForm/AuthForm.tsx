@@ -85,12 +85,12 @@ export function AuthForm() {
         </button>
         <button
           type="button"
-          className={`${buttonStyle} bg-transparent p-1.5 text-sm text-slate-300 hover:text-white`}
+          className={`${buttonStyle} bg-transparent p-1.5 text-sm text-muted hover:text-white`}
           onClick={() => setMode(mode === "login" ? "register" : "login")}
         >
           {mode === "login" ? "Create an account" : "I already have an account"}
         </button>
-        {error && <p className="mt-3 text-sm text-down">{error}</p>}
+        {error && <p className="mt-3 text-sm text-error">{error}</p>}
       </form>
     </>
   );

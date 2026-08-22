@@ -32,7 +32,7 @@ export function historyBetChartConfig(bet: ResolvedBet): HistoryBetChartConfig {
     colors: {
       accent: resultColor,
       graph: directionColor,
-      surface: directionColor,
+      surface: resultColor,
       border: resultColor,
       background: colors.background,
     },

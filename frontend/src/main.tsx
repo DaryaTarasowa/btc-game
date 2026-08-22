@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "@/App";
 import { PlayerProvider } from "@/context/PlayerContext";
 import { MarketProvider } from "@/context/MarketContext";
-import "@/styles.css";
+import "@/styles/styles.css";
 
 import { Amplify } from "aws-amplify";
 
@@ -37,7 +37,9 @@ createRoot(rootElement).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <PlayerProvider>
-        <MarketProvider><App /></MarketProvider>
+        <MarketProvider>
+          <App />
+        </MarketProvider>
       </PlayerProvider>
     </QueryClientProvider>
   </StrictMode>,

@@ -30,8 +30,8 @@ const dropdownPanelStyle =
 const dropdownActionStyle = `${buttonStyle} w-full rounded-xl bg-transparent px-3.5 py-2.5 text-left text-sm`;
 
 const dropdownActionToneStyle = {
-  default: "text-slate-200 hover:bg-white/10 hover:text-white",
-  danger: "text-down hover:bg-down/10",
+  default: "text-muted hover:bg-white/10 hover:text-white",
+  danger: "text-error hover:bg-error/10",
 } as const;
 
 export function DropdownMenu({
@@ -104,7 +104,7 @@ export function DropdownMenu({
               </button>
             ))}
           </div>
-          {error && <p className="mt-3 text-sm text-down">{error}</p>}
+          {error && <p className="mt-3 text-sm text-error">{error}</p>}
         </div>
       )}
     </div>

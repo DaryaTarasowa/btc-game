@@ -1,16 +1,21 @@
 import { BetDirection } from "@/domain/bets";
 import { actionButtonStyle } from "@/styles/ui";
 
-const betButtonStyle = `${actionButtonStyle} min-w-0 flex-1 enabled:hover:-translate-y-0.5`;
+const betButtonStyle = `
+  ${actionButtonStyle}
+  min-w-0 flex-1
+  flex items-center justify-center
+  enabled:hover:-translate-y-0.5
+`;
 
 const upButton = `
   ${betButtonStyle}
-  bg-success text-[#06251b] enabled:hover:bg-[#63e5b5]
+  bg-success text-ink
 `;
 
 const downButton = `
   ${betButtonStyle}
-  bg-error text-[#2d080b] enabled:hover:bg-[#ff8994]
+  bg-error text-ink
 `;
 
 interface BetButtonProps {
@@ -27,9 +32,9 @@ function BetButton({ direction, disabled, onClick }: BetButtonProps) {
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className={isUp ? upButton : downButton}
+      className={`${isUp ? upButton : downButton} ${disabled ? "hidden" : "block"}`}
     >
-      <span aria-hidden="true">
+      <span aria-hidden="true" className={`whitespace-nowrap text-center`}>
         {isUp ? "↑" : "↓"} {isUp ? " UP" : " DOWN"}
       </span>
     </button>
