@@ -25,12 +25,12 @@ interface DropdownMenuProps {
 }
 
 const dropdownPanelStyle =
-  "absolute top-[calc(100%+0.5rem)] right-0 z-10 w-[min(320px,calc(100vw-40px))] rounded-2xl border border-white/10 bg-[#111622]/98 p-3.5 text-left shadow-[0_20px_60px_rgba(0,0,0,0.55)] backdrop-blur-xl";
+  "absolute top-[calc(100%+0.5rem)] right-0 z-10 w-[min(320px,calc(100vw-40px))] rounded-2xl border border-opaque bg-ink p-3.5 text-left shadow-[0_20px_60px_rgba(0,0,0,0.55)] backdrop-blur-xl";
 
 const dropdownActionStyle = `${buttonStyle} w-full rounded-xl bg-transparent px-3.5 py-2.5 text-left text-sm`;
 
 const dropdownActionToneStyle = {
-  default: "text-muted hover:bg-white/10 hover:text-white",
+  default: "text-muted hover:bg-opaque hover:text-white",
   danger: "text-error hover:bg-error/10",
 } as const;
 

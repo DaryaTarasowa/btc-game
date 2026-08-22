@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getCompletedBets, reconstructableBetHistory } from "@/api/bets";
-import { HistoryBetList } from "@/components/HistoryPanel/HistoryBetList";
-import { HistoryLoginRequired } from "@/components/HistoryPanel/HistoryLoginRequired";
+import { HistoryBetList } from "@/components/HistoryView/HistoryBetList";
+import { HistoryLoginRequired } from "@/components/HistoryView/HistoryLoginRequired";
 import { usePlayer } from "@/context/usePlayer";
-import { eyebrowStyle, pageCardStyle, pageTitleStyle } from "@/styles/ui";
+import { eyebrowStyle, panelStyle, pageTitleStyle } from "@/styles/ui";
 
-const emptyStyle = "mt-10 text-[#8490a9]";
+const emptyStyle = "mt-10 text-muted";
 
-export function HistoryPanel() {
+export function HistoryView() {
   const { playerId, player } = usePlayer();
   const [selectedBetId, setSelectedBetId] = useState<string | null>(null);
   const history = useQuery({
@@ -23,7 +23,7 @@ export function HistoryPanel() {
   }
 
   return (
-    <section className={`${pageCardStyle} w-full mt-1`}>
+    <section className={`${panelStyle} w-full mt-1`}>
       <p className={eyebrowStyle}>GAME HISTORY</p>
       {playerId ? (
         <>

@@ -5,7 +5,7 @@ import {
 } from "@/components/PriceChart/PriceChart";
 import type { ActiveBet } from "@/api/bets";
 import { BetDirection } from "@/domain/bets";
-import { colors } from "@/styles/ui";
+import { getThemeColor } from "../../utils";
 
 type ActiveBetChartConfig = Pick<
   PriceChartProps,
@@ -19,14 +19,16 @@ type ActiveBetChartConfig = Pick<
 
 function activeBetChartConfig(bet: ActiveBet): ActiveBetChartConfig {
   const color =
-    bet.direction === BetDirection.Up ? colors.success : colors.error;
+    bet.direction === BetDirection.Up
+      ? getThemeColor("--color-success")
+      : getThemeColor("--color-error");
 
   return {
     colors: {
       accent: color,
       graph: color,
       surface: color,
-      background: colors.background,
+      background: getThemeColor("--color-ink"),
       border: color,
     },
     referenceLines: [
@@ -51,7 +53,6 @@ function activeBetChartConfig(bet: ActiveBet): ActiveBetChartConfig {
       from: new Date(Date.parse(bet.startEventTimestamp) - 5_000).toISOString(),
       to: bet.resolutionTargetTimestamp,
     },
-    tone: bet.direction === BetDirection.Up ? "positive" : "negative",
 
     annotation: {
       text: `${bet.direction.toUpperCase()} position active`,
@@ -60,18 +61,17 @@ function activeBetChartConfig(bet: ActiveBet): ActiveBetChartConfig {
   };
 }
 
-export function ActiveBetChart() {
+export function ActiveBetChart({ bet }: { bet: ActiveBet }) {
   const session = useGameSession();
 
   const {
-    activeBet,
     pricesError: error,
     pricesPending: isPending,
     prices,
     productName,
   } = session;
 
-  const chartConfig = activeBet ? activeBetChartConfig(activeBet) : undefined;
+  const chartConfig = activeBetChartConfig(bet);
 
   return (
     <div className="min-w-0" aria-live="polite">

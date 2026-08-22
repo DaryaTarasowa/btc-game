@@ -5,7 +5,7 @@ export function useBetCountdown(targetTimestamp?: string) {
 
   useEffect(() => {
     if (!targetTimestamp) return;
-    const timer = window.setInterval(() => redraw((value) => value + 1), 250);
+    const timer = window.setInterval(() => redraw((value) => value + 1), 1_000);
     return () => window.clearInterval(timer);
   }, [targetTimestamp]);
 

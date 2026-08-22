@@ -3,7 +3,8 @@ import { PriceChart } from "@/components/PriceChart/PriceChart";
 import { useResolvedBetChart } from "@/queries/useResolvedBetChart";
 import type { PriceChartProps } from "@/components/PriceChart/PriceChart";
 import { BetDirection, BetResult } from "@/domain/bets";
-import { colors } from "@/styles/ui";
+import { getThemeColor } from "@/utils";
+import { LoadingSpinner } from "@/components/LoadingSpinner/LoadingSpinner";
 
 type HistoryBetChartConfig = Pick<
   PriceChartProps,
@@ -21,10 +22,14 @@ type HistoryBetChartConfig = Pick<
 
 export function historyBetChartConfig(bet: ResolvedBet): HistoryBetChartConfig {
   const directionColor =
-    bet.direction === BetDirection.Up ? colors.success : colors.error;
+    bet.direction === BetDirection.Up
+      ? getThemeColor("--color-success")
+      : getThemeColor("--color-error");
 
   const resultColor =
-    bet.result === BetResult.Won ? colors.success : colors.error;
+    bet.result === BetResult.Won
+      ? getThemeColor("--color-success")
+      : getThemeColor("--color-error");
 
   const annotation = `${bet.result} ${bet.direction} prediction`;
 
@@ -34,7 +39,7 @@ export function historyBetChartConfig(bet: ResolvedBet): HistoryBetChartConfig {
       graph: directionColor,
       surface: resultColor,
       border: resultColor,
-      background: colors.background,
+      background: getThemeColor("--color-ink"),
     },
 
     headlinePrice: bet.endPrice,
@@ -96,7 +101,7 @@ export function HistoryBetChart({ bet }: HistoryBetChartProps) {
         annotation={chartConfig.annotation}
         stateClassName="min-h-55"
         messages={{
-          loading: "Reconstructing stored market window…",
+          loading: <LoadingSpinner color="var(--color-accent)" />,
           empty: "Stored market data is no longer available for this bet.",
         }}
       />

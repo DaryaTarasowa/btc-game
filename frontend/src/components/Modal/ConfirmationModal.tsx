@@ -1,5 +1,6 @@
 import { Modal } from "@/components/Modal/Modal";
 import { fadedButtonStyle } from "@/styles/ui";
+import React from "react";
 
 interface ConfirmationModalProps {
   eyebrow?: string;
@@ -7,7 +8,8 @@ interface ConfirmationModalProps {
   description?: string;
   cancelLabel: string;
   confirmLabel: string;
-  pendingLabel?: string;
+  pendingLabel?: React.ReactNode;
+  tone?: "default" | "danger";
   pending?: boolean;
   error?: string | null;
   onCancel: () => void;
@@ -21,14 +23,20 @@ export function ConfirmationModal({
   cancelLabel,
   confirmLabel,
   pendingLabel,
+  tone = "default",
   pending = false,
   error,
   onCancel,
   onConfirm,
 }: ConfirmationModalProps) {
+  const confirmStyle = tone === "danger" ? "text-error" : "text-accent";
+
+  const borderStyle =
+    tone === "danger" ? "border-error/50" : "border-accent/50";
+
   return (
     <Modal
-      className="max-w-[520px] border-error/50"
+      className={`max-w-[520px] ${borderStyle}`}
       role="alertdialog"
       closeDisabled={pending}
       onClose={onCancel}
@@ -37,6 +45,7 @@ export function ConfirmationModal({
       description={description}
     >
       {error && <p className="mt-4 text-error">{error}</p>}
+
       <div className="mt-7 flex gap-2.5">
         <button
           type="button"
@@ -47,13 +56,14 @@ export function ConfirmationModal({
         >
           {cancelLabel}
         </button>
+
         <button
           type="button"
-          className={`${fadedButtonStyle} min-w-0 flex-1 text-error`}
+          className={`${fadedButtonStyle} min-w-0 flex-1 ${confirmStyle}`}
           disabled={pending}
           onClick={onConfirm}
         >
-          {pending ? pendingLabel || null : confirmLabel}
+          {pending ? (pendingLabel ?? null) : confirmLabel}
         </button>
       </div>
     </Modal>

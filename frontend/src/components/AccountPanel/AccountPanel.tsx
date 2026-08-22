@@ -3,6 +3,7 @@ import { DropdownMenu } from "@/components/DropdownMenu/DropdownMenu";
 import { ConfirmationModal } from "@/components/Modal/ConfirmationModal";
 import { usePlayer } from "@/context/usePlayer";
 import { buttonStyle } from "@/styles/ui";
+import { LoadingSpinner } from "@/components/LoadingSpinner/LoadingSpinner";
 
 export function AccountPanel() {
   const auth = usePlayer();
@@ -63,7 +64,7 @@ export function AccountPanel() {
             </span>
           </span>
         }
-        triggerClassName={`${buttonStyle} flex items-center rounded-full bg-transparent px-3 py-2 text-accent hover:bg-white/5`}
+        triggerClassName={`${buttonStyle} flex items-center rounded-full bg-transparent px-3 py-2 text-accent hover:bg-white/15`}
         ariaLabel="Account"
         onTriggerClick={() => setError(null)}
         actions={[
@@ -89,7 +90,8 @@ export function AccountPanel() {
           description="Your account, score, and complete betting history will be permanently deleted."
           cancelLabel="Keep account"
           confirmLabel="Delete permanently"
-          pendingLabel="Deleting…"
+          pendingLabel={<LoadingSpinner label="Deleting..." />}
+          tone="danger"
           pending={pending}
           error={error}
           onCancel={() => setConfirmDelete(false)}

@@ -3,7 +3,7 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ResolvedBet } from "@/api/bets";
-import { HistoryBetList } from "@/components/HistoryPanel/HistoryBetList";
+import { HistoryBetList } from "@/components/HistoryView/HistoryBetList";
 import { BetDirection, BetResult, BetStatus } from "@/domain/bets";
 
 vi.mock("@/components/HistoryPanel/HistoryBetChart", () => ({

@@ -6,7 +6,7 @@ import { ResolvedBetModal } from "@/components/GamePanel/ResolvedBetModal";
 import { GameSessionProvider } from "@/context/GameSessionContext";
 import { useGameSession } from "@/context/useGameSession";
 import { usePlayer } from "@/context/usePlayer";
-import { pageCardStyle, pageStyle } from "@/styles/ui";
+import { panelStyle, pageStyle } from "@/styles/ui";
 
 function GameWorkspace() {
   const { playerId } = usePlayer();
@@ -37,7 +37,7 @@ function GameWorkspace() {
     <div
       className={`${pageStyle} grid grid-cols-[minmax(260px,0.72fr)_minmax(0,1.8fr)] items-start gap-6 max-[820px]:grid-cols-1`}
     >
-      <section className={`${pageCardStyle} max-[820px]:text-left`}>
+      <section className={`${panelStyle} max-[820px]:text-left`}>
         {playerId ? <GamePanel /> : <AuthForm />}
       </section>
 

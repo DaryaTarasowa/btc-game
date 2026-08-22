@@ -9,7 +9,7 @@ const navigationItemStyle =
 export function AppLayout() {
   const { playerId } = usePlayer();
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_20%_10%,rgba(247,147,26,0.2),transparent_34rem),linear-gradient(145deg,#090c13,#131929)] p-[clamp(20px,5vw,64px)]">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_20%_10%,color-mix(in_srgb,var(--color-accent)_20%,transparent),transparent_34rem),linear-gradient(145deg,var(--color-ink),var(--color-night))] p-[clamp(20px,5vw,64px)]">
       <header className={`${pageStyle} mb-6 flex items-center justify-between`}>
         <Link
           to="/"
@@ -25,7 +25,7 @@ export function AppLayout() {
                 className={navigationItemStyle}
                 activeOptions={{ exact: true }}
                 activeProps={{
-                  className: `${navigationItemStyle} bg-white/10 text-white`,
+                  className: `${navigationItemStyle} bg-white/15 text-white`,
                 }}
               >
                 Market
@@ -34,7 +34,7 @@ export function AppLayout() {
                 to="/history"
                 className={navigationItemStyle}
                 activeProps={{
-                  className: `${navigationItemStyle} bg-white/10 text-white`,
+                  className: `${navigationItemStyle} bg-white/15 text-white`,
                 }}
               >
                 History

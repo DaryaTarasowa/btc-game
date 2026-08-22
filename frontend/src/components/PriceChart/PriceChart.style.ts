@@ -1,5 +1,3 @@
-import { colors } from "@/styles/ui";
-
 export interface PriceChartColors {
   accent: string;
   graph: string;
@@ -34,11 +32,11 @@ export interface PriceChartTheme {
 }
 
 export const defaultPriceChartColors: PriceChartColors = {
-  accent: colors.bitcoin,
-  graph: colors.bitcoin,
-  background: colors.panelBackground,
-  surface: colors.background,
-  border: "#777777",
+  accent: "#f7931a",
+  graph: "#f7931a",
+  background: "#0b0e16",
+  surface: "#f7931a",
+  border: "#8490a9",
   text: "#ffffff",
   mutedText: "#8490a9",
 };

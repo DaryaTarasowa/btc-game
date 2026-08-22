@@ -1,5 +1,5 @@
 import type { ResolvedBet } from "@/api/bets";
-import { HistoryBetChart } from "@/components/HistoryPanel/HistoryBetChart";
+import { HistoryBetChart } from "@/components/HistoryView/HistoryBetChart";
 import { BetResult } from "@/domain/bets";
 import { buttonStyle } from "@/styles/ui";
 
@@ -9,9 +9,9 @@ const dateFormatter = new Intl.DateTimeFormat(undefined, {
 });
 
 const historyBetItemStyle =
-  "relative grid w-full grid-cols-[100px_1fr_auto_28px] items-center gap-3.5 rounded-[14px] border bg-[#080b12]/50 px-4.5 py-4 text-left text-muted max-[820px]:grid-cols-[80px_1fr_24px] hover:border-accent hover:cursor-pointer";
+  "relative grid w-full grid-cols-[100px_1fr_auto_28px] items-center gap-3.5 rounded-[14px] border bg-ink px-4.5 py-4 text-left text-white max-[820px]:grid-cols-[80px_1fr_24px] hover:border-accent hover:cursor-pointer hover:-translate-y-0.5";
 
-const chartToggleButtonStyle = `${buttonStyle} grid size-[34px] min-w-0 place-items-center rounded-[9px] bg-accent/10 p-[7px] text-accent hover:bg-accent hover:text-[#171008] max-[820px]:col-start-3 max-[820px]:row-start-1`;
+const chartToggleButtonStyle = `${buttonStyle} grid size-[34px] min-w-0 place-items-center rounded-[9px] bg-accent/10 p-[7px] text-accent hover:bg-accent hover:text-white max-[820px]:col-start-3 max-[820px]:row-start-1`;
 
 interface HistoryBetItemProps {
   bet: ResolvedBet;
@@ -28,7 +28,7 @@ function HistoryBetItem({ bet, expanded, onToggle }: HistoryBetItemProps) {
       <div
         title={chartAction}
         aria-label={chartAction}
-        className={`${historyBetItemStyle} ${expanded ? "border-accent" : "border-white/10"}`}
+        className={`${historyBetItemStyle} ${expanded ? "border-accent" : "border-opaque"}`}
         onClick={onToggle}
       >
         <span
@@ -40,7 +40,7 @@ function HistoryBetItem({ bet, expanded, onToggle }: HistoryBetItemProps) {
           {bet.direction.toUpperCase()} · $
           {Number(bet.startPrice).toLocaleString()}
         </strong>
-        <small className="text-[#8490a9] max-[820px]:col-start-2">
+        <small className="text-muted max-[820px]:col-start-2">
           {dateFormatter.format(new Date(bet.startEventTimestamp))}
         </small>
         <button
@@ -90,13 +90,11 @@ export function HistoryBetList({
           ))}
         </div>
       ) : (
-        <p className="mt-10 text-[#8490a9]">
-          No bets with available price charts.
-        </p>
+        <p className="mt-10 text-muted">No bets with available price charts.</p>
       )}
 
       {olderCount > 0 && (
-        <p className="mt-4.5 text-sm text-[#8490a9]">
+        <p className="mt-4.5 text-sm text-muted">
           …and {olderCount} older {olderCount === 1 ? "bet" : "bets"}.
         </p>
       )}

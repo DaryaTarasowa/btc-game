@@ -6,8 +6,9 @@ import {
   inputStyle,
   pageTitleStyle,
 } from "@/styles/ui";
+import { LoadingSpinner } from "@/components/LoadingSpinner/LoadingSpinner";
 
-const submitButtonStyle = `${actionButtonStyle} bg-accent text-[#14100a] enabled:hover:-translate-y-0.5 enabled:hover:bg-[#ffad42]`;
+const submitButtonStyle = `${actionButtonStyle} bg-accent text-ink`;
 
 export function AuthForm() {
   const auth = usePlayer();
@@ -77,11 +78,13 @@ export function AuthForm() {
           required
         />
         <button className={submitButtonStyle} type="submit" disabled={pending}>
-          {pending
-            ? "Please wait…"
-            : mode === "login"
-              ? "Log in"
-              : "Create account"}
+          {pending ? (
+            <LoadingSpinner label="Logging in..." />
+          ) : mode === "login" ? (
+            "Log in"
+          ) : (
+            "Create account"
+          )}
         </button>
         <button
           type="button"

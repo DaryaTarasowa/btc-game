@@ -5,7 +5,6 @@ const betButtonStyle = `
   ${actionButtonStyle}
   min-w-0 flex-1
   flex items-center justify-center
-  enabled:hover:-translate-y-0.5
 `;
 
 const upButton = `

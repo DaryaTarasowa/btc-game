@@ -1,14 +1,28 @@
 @import "tailwindcss";
 
 @theme {
-  --color-accent: #f7931a;
+  --color-accent: #ffc375;
   --color-success: #35d59a;
   --color-error: #ff6877;
   --color-ink: #0b0e16;
   --color-muted: #8490a9;
+  --color-white: #ffffff;
+  --color-opaque: #ffffff1a;
+  --color-night: #131824;
+
+  /* In order chrome does not override the autofilled inputs */
+  --color-input-bg: #e8f0fe;
+  --color-input-text: #0b0e16;
+
+  /*currencies */
+  --color-bitcoin: #f7931a;
 }
 
 @layer base {
+  html {
+    scrollbar-gutter: stable;
+  }
+
   :root {
     font-family:
       Inter,
@@ -28,8 +42,19 @@
     min-width: 320px;
     min-height: 100vh;
   }
+
   button {
     font: inherit;
+  }
+
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-text-fill-color: var(--color-input-text);
+    caret-color: var(--color-input-text);
+    -webkit-box-shadow: 0 0 0 1000px var(--color-input-bg) inset;
+    box-shadow: 0 0 0 1000px var(--color-input-bg) inset;
   }
 }
 
@@ -37,33 +62,32 @@
   0% {
     box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent) 50%, transparent);
   }
-
   70% {
     box-shadow: 0 0 0 12px transparent;
   }
-
   100% {
     box-shadow: 0 0 0 12px transparent;
   }
 }
+
 @keyframes bet-pulse {
   0% {
     box-shadow: 0 0 0 0 currentColor;
   }
-
   70% {
     box-shadow: 0 0 0 8px transparent;
   }
-
   100% {
     box-shadow: 0 0 0 8px transparent;
   }
 }
+
 @keyframes resolution-backdrop-in {
   from {
     opacity: 0;
   }
 }
+
 @keyframes resolution-dialog-in {
   from {
     opacity: 0.25;

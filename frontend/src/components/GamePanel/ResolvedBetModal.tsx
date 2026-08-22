@@ -3,8 +3,8 @@ import { Modal } from "@/components/Modal/Modal";
 import { PriceChart } from "@/components/PriceChart/PriceChart";
 import { BetResult } from "@/domain/bets";
 import { useResolvedBetChart } from "@/queries/useResolvedBetChart";
-import { buttonStyle, colors, eyebrowStyle } from "@/styles/ui";
-import { HistoryBetChart } from "../HistoryPanel/HistoryBetChart";
+import { HistoryBetChart } from "../HistoryView/HistoryBetChart";
+import { getThemeColor } from "../../utils";
 
 interface ResolvedBetModalProps {
   bet: ResolvedBet;
@@ -17,10 +17,7 @@ export function ResolvedBetModal({
   origin,
   onClose,
 }: ResolvedBetModalProps) {
-  const resolvedPrices = useResolvedBetChart(bet);
-
   const won = bet.result === BetResult.Won;
-  const color = won ? colors.success : colors.error;
 
   return (
     <Modal

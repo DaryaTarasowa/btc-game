@@ -4,13 +4,9 @@ import { usePlayer } from "@/context/usePlayer";
 import { BetDirection } from "@/domain/bets";
 import { useBetCountdown } from "@/queries/useBetCountdown";
 import { usePlayerScore } from "@/queries/usePlayerScore";
+import { Link } from "@tanstack/react-router";
 
-import {
-  metricCardStyle,
-  metricLabelStyle,
-  metricValueStyle,
-  pageTitleStyle,
-} from "@/styles/ui";
+import { cardStyle, accentCardStyle, pageTitleStyle } from "@/styles/ui";
 import { useGameSession } from "../../context/useGameSession";
 
 export function GamePanel() {
@@ -43,29 +39,43 @@ export function GamePanel() {
 
   return (
     <>
-      <h1 className={pageTitleStyle}>Place your call</h1>
-      <div
-        className={`${metricCardStyle} mx-auto mb-6 -mt-2 border-accent/50 bg-[linear-gradient(145deg,rgba(247,147,26,0.2),rgba(247,147,26,0.06))] shadow[0_12px_32px_rgba(247,147,26,0.1)]`}
-        aria-live="polite"
+      {!activeBet ? (
+        <h1 className={`${pageTitleStyle} text-[clamp(2rem,8vw,3.75rem)]`}>
+          Place your call
+        </h1>
+      ) : (
+        <h2 className={`${pageTitleStyle} text-[clamp(1rem,4vw,2rem)]`}>
+          Waiting for resolution...
+        </h2>
+      )}
+      <Link
+        to="/history"
+        className={`${accentCardStyle} cursor-pointer hover:border-accent`}
       >
-        <span className={`${metricLabelStyle} text-[#ffc375]`}>
+        <span
+          className={`text-xs text-accent tracking-[0.12em] uppercase font-extrabold`}
+        >
           Current score
         </span>
         <strong
-          className={`${metricValueStyle} text-[clamp(2.6rem,6vw,4rem)] text-white`}
+          className={`block leading-none font-extrabold [font-variant-numeric:tabular-nums] text-[clamp(2.6rem,6vw,4rem)] text-white`}
         >
           {score ?? "—"}
         </strong>
-      </div>
+      </Link>
 
       {activeBet && (
         <div
-          className={`${metricCardStyle} mt-6.5 bg-[#080b12]/50 ${activeBet.direction === BetDirection.Up ? "border-success/40 text-success" : "border-error/40 text-error"}`}
+          className={`${cardStyle} ${activeBet.direction === BetDirection.Up ? "border-success/40 text-success" : "border-error/40 text-error"} bg-ink`}
         >
-          <span className={metricLabelStyle}>
+          <span
+            className={`text-xs ${activeBet.direction === BetDirection.Up ? "text-success" : "text-error"} tracking-[0.12em] uppercase font-extrabold`}
+          >
             {activeBet.direction.toUpperCase()} BET ACTIVE
           </span>
-          <strong className={`${metricValueStyle} text-[2.4rem]`}>
+          <strong
+            className={`block leading-none font-extrabold [font-variant-numeric:tabular-nums] text-[2.4rem]`}
+          >
             {secondsRemaining}s
           </strong>
           <small className="text-muted">
