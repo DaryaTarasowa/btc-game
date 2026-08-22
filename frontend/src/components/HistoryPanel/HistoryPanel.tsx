@@ -28,14 +28,14 @@ export function HistoryPanel() {
       {playerId ? (
         <>
           <h1 className={pageTitleStyle}>Your predictions</h1>
-          <p className="m-0 leading-7 text-slate-300">
+          <p className="m-0 leading-7 text-muted">
             History for{" "}
             <strong className="text-white">{player?.username}</strong>
           </p>
           {history.isPending ? (
             <p className={emptyStyle}>Loading completed predictions…</p>
           ) : history.isError ? (
-            <p className="mt-5.5 text-down">{history.error.message}</p>
+            <p className="mt-5.5 text-error">{history.error.message}</p>
           ) : history.data.length === 0 ? (
             <p className={emptyStyle}>No completed predictions yet.</p>
           ) : (

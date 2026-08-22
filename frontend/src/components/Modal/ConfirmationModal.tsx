@@ -28,7 +28,7 @@ export function ConfirmationModal({
 }: ConfirmationModalProps) {
   return (
     <Modal
-      className="max-w-[520px] border-down/50"
+      className="max-w-[520px] border-error/50"
       role="alertdialog"
       closeDisabled={pending}
       onClose={onCancel}
@@ -36,7 +36,7 @@ export function ConfirmationModal({
       title={title}
       description={description}
     >
-      {error && <p className="mt-4 text-down">{error}</p>}
+      {error && <p className="mt-4 text-error">{error}</p>}
       <div className="mt-7 flex gap-2.5">
         <button
           type="button"
@@ -49,7 +49,7 @@ export function ConfirmationModal({
         </button>
         <button
           type="button"
-          className={`${fadedButtonStyle} min-w-0 flex-1 text-down`}
+          className={`${fadedButtonStyle} min-w-0 flex-1 text-error`}
           disabled={pending}
           onClick={onConfirm}
         >

@@ -5,7 +5,7 @@ export function HistoryLoginRequired() {
   return (
     <>
       <h1 className={pageTitleStyle}>Login required</h1>
-      <p className="m-0 leading-7 text-slate-300">
+      <p className="m-0 leading-7 text-muted">
         Log in from the market page to see your prediction history.
       </p>
       <Link

@@ -62,7 +62,7 @@ export function Modal({
         {eyebrow && <p className={`${eyebrowStyle}`}>{eyebrow}</p>}
         {title && <h2 className={`${modalTitleStyle}`}>{title}</h2>}
         {description && (
-          <p className="mt-5 leading-7 text-slate-300">{description}</p>
+          <p className="mt-5 leading-7 text-muted">{description}</p>
         )}
         {children}
       </section>

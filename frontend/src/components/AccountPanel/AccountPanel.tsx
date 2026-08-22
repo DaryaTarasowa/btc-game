@@ -2,7 +2,7 @@ import { useState } from "react";
 import { DropdownMenu } from "@/components/DropdownMenu/DropdownMenu";
 import { ConfirmationModal } from "@/components/Modal/ConfirmationModal";
 import { usePlayer } from "@/context/usePlayer";
-import { buttonStyle, navigationItemStyle } from "@/styles/ui";
+import { buttonStyle } from "@/styles/ui";
 
 export function AccountPanel() {
   const auth = usePlayer();
@@ -45,8 +45,25 @@ export function AccountPanel() {
   return (
     <>
       <DropdownMenu
-        trigger={auth.player.username}
-        triggerClassName={`${buttonStyle} ${navigationItemStyle} bg-transparent text-accent hover:bg-white/5 hover:text-[#ffb14d]`}
+        trigger={
+          <span className="flex items-center gap-2">
+            <span
+              className="grid size-6 place-items-center rounded-full bg-accent/15 text-xs font-black text-accent"
+              aria-hidden="true"
+            >
+              {auth.player.username.charAt(0).toUpperCase()}
+            </span>
+
+            <span className="hidden min-[400px]:inline">
+              {auth.player.username}
+            </span>
+
+            <span className="text-[10px] text-muted" aria-hidden="true">
+              ▼
+            </span>
+          </span>
+        }
+        triggerClassName={`${buttonStyle} flex items-center rounded-full bg-transparent px-3 py-2 text-accent hover:bg-white/5`}
         ariaLabel="Account"
         onTriggerClick={() => setError(null)}
         actions={[

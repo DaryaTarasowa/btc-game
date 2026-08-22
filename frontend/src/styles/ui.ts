@@ -1,7 +1,7 @@
 export const buttonStyle =
   "cursor-pointer border-0 font-extrabold transition duration-150 focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-white disabled:cursor-wait disabled:opacity-70";
 
-export const actionButtonStyle = `${buttonStyle} min-h-[68px] rounded-full px-7 py-3.5`;
+export const actionButtonStyle = `${buttonStyle} min-h-[68px] rounded-full px-7 py-3.5 transition enabled:hover:opacity-80`;
 
 export const fadedButtonStyle = `${actionButtonStyle} bg-current/10 enabled:hover:bg-current/20`;
 
@@ -29,9 +29,6 @@ export const metricLabelStyle =
 
 export const metricValueStyle =
   "block leading-none font-extrabold [font-variant-numeric:tabular-nums]";
-
-export const navigationItemStyle =
-  "rounded-full px-3.5 py-2 text-sm font-bold no-underline transition-colors";
 
 export const colors = {
   bitcoin: "#ffb14d",
