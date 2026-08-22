@@ -250,7 +250,7 @@ function ChartRenderer({
   prices = [],
   headlinePrice,
   headlineLabel = "Latest price",
-  subtitle = "Stored market history · 3 min",
+  subtitle,
   annotation,
   visibleRange,
   referenceLines = [],

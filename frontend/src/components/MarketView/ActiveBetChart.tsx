@@ -5,7 +5,8 @@ import {
 } from "@/components/PriceChart/PriceChart";
 import type { ActiveBet } from "@/api/bets";
 import { BetDirection } from "@/domain/bets";
-import { getThemeColor } from "../../utils";
+import { getThemeColor } from "@/utils";
+import { useBetCountdown } from "@/queries/useBetCountdown";
 
 type ActiveBetChartConfig = Pick<
   PriceChartProps,
@@ -14,7 +15,7 @@ type ActiveBetChartConfig = Pick<
   | "guides"
   | "visibleRange"
   | "annotation"
-  | "tone"
+  | "subtitle"
 >;
 
 function activeBetChartConfig(bet: ActiveBet): ActiveBetChartConfig {
@@ -22,6 +23,8 @@ function activeBetChartConfig(bet: ActiveBet): ActiveBetChartConfig {
     bet.direction === BetDirection.Up
       ? getThemeColor("--color-success")
       : getThemeColor("--color-error");
+
+  const secondsRemaining = useBetCountdown(bet?.resolutionTargetTimestamp);
 
   return {
     colors: {
@@ -55,7 +58,16 @@ function activeBetChartConfig(bet: ActiveBet): ActiveBetChartConfig {
     },
 
     annotation: {
-      text: `${bet.direction.toUpperCase()} position active`,
+      text: (
+        <span>
+          {bet.direction.toUpperCase()} position active
+          <span className="hidden max-[820px]:inline">
+            {" · "}
+            <span className="text-base font-bold">{secondsRemaining}</span>sec
+            remain
+          </span>
+        </span>
+      ),
       color,
     },
   };
@@ -84,6 +96,7 @@ export function ActiveBetChart({ bet }: { bet: ActiveBet }) {
         guides={chartConfig?.guides}
         visibleRange={chartConfig?.visibleRange}
         annotation={chartConfig?.annotation}
+        subtitle={chartConfig?.subtitle}
         messages={{
           loading: (
             <>

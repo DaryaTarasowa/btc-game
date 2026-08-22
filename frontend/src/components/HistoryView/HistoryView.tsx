@@ -4,7 +4,7 @@ import { getCompletedBets, reconstructableBetHistory } from "@/api/bets";
 import { HistoryBetList } from "@/components/HistoryView/HistoryBetList";
 import { HistoryLoginRequired } from "@/components/HistoryView/HistoryLoginRequired";
 import { usePlayer } from "@/context/usePlayer";
-import { eyebrowStyle, panelStyle, pageTitleStyle } from "@/styles/ui";
+import { eyebrowStyle, panelStyle, sectionHeaderStyle } from "@/styles/ui";
 
 const emptyStyle = "mt-10 text-muted";
 
@@ -27,7 +27,7 @@ export function HistoryView() {
       <p className={eyebrowStyle}>GAME HISTORY</p>
       {playerId ? (
         <>
-          <h1 className={pageTitleStyle}>Your predictions</h1>
+          <h1 className={sectionHeaderStyle}>Your predictions</h1>
           <p className="m-0 leading-7 text-muted">
             History for{" "}
             <strong className="text-white">{player?.username}</strong>

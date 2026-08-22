@@ -1,10 +1,10 @@
 import { Link } from "@tanstack/react-router";
-import { pageTitleStyle } from "@/styles/ui";
+import { sectionHeaderStyle } from "@/styles/ui";
 
 export function HistoryLoginRequired() {
   return (
     <>
-      <h1 className={pageTitleStyle}>Login required</h1>
+      <h1 className={sectionHeaderStyle}>Login required</h1>
       <p className="m-0 leading-7 text-muted">
         Log in from the market page to see your prediction history.
       </p>

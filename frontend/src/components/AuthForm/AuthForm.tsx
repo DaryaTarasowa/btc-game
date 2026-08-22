@@ -4,7 +4,7 @@ import {
   actionButtonStyle,
   buttonStyle,
   inputStyle,
-  pageTitleStyle,
+  sectionHeaderStyle,
 } from "@/styles/ui";
 import { LoadingSpinner } from "@/components/LoadingSpinner/LoadingSpinner";
 
@@ -38,7 +38,7 @@ export function AuthForm() {
 
   return (
     <>
-      <h1 className={pageTitleStyle}>Ready to play?</h1>
+      <div className={sectionHeaderStyle}>Ready to play?</div>
       <form
         className="grid gap-2.5"
         onSubmit={(event) => void submit(event)}

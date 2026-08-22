@@ -10,9 +10,10 @@ export const inputStyle =
 
 export const pageStyle = "mx-auto w-full max-w-[1180px]";
 
-export const panelStyle = `min-h-[492px] p-[clamp(28px,4vw,52px)] text-center rounded-3xl border border-opaque bg-night shadow-[0_24px_80px_rgba(0,0,0,0.4)]`;
+export const panelStyle = `min-[820px]:min-h-[492px] p-[clamp(28px,4vw,52px)] text-center rounded-3xl border border-opaque bg-night shadow-[0_24px_80px_rgba(0,0,0,0.4)]`;
 
-export const pageTitleStyle = "mb-7 leading-[0.98] tracking-[-0.045em]";
+export const sectionHeaderStyle =
+  "mb-12 leading-[0.98] tracking-[-0.045em] text-[clamp(2rem,8vw,3.75rem)]";
 
 export const eyebrowStyle =
   "mb-3 text-xs font-extrabold tracking-[0.22em] text-accent uppercase";

@@ -6,7 +6,7 @@ import { useBetCountdown } from "@/queries/useBetCountdown";
 import { usePlayerScore } from "@/queries/usePlayerScore";
 import { Link } from "@tanstack/react-router";
 
-import { cardStyle, accentCardStyle, pageTitleStyle } from "@/styles/ui";
+import { cardStyle, accentCardStyle, sectionHeaderStyle } from "@/styles/ui";
 import { useGameSession } from "../../context/useGameSession";
 
 export function GamePanel() {
@@ -40,13 +40,9 @@ export function GamePanel() {
   return (
     <>
       {!activeBet ? (
-        <h1 className={`${pageTitleStyle} text-[clamp(2rem,8vw,3.75rem)]`}>
-          Place your call
-        </h1>
+        <div className={`${sectionHeaderStyle}`}>Place your call</div>
       ) : (
-        <h2 className={`${pageTitleStyle} text-[clamp(1rem,4vw,2rem)]`}>
-          Waiting for resolution...
-        </h2>
+        <div className={`${sectionHeaderStyle}`}>Wait for resolution</div>
       )}
       <Link
         to="/history"

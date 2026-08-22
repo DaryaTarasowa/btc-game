@@ -46,6 +46,7 @@ export function DefaultBetChart() {
         isPending={isPending}
         error={error}
         colors={defaultBetChartConfig().colors}
+        subtitle="Stored market history · 3 min"
         messages={{
           loading: (
             <>
