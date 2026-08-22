@@ -1,10 +1,7 @@
 import type { ResolvedBet } from "@/api/bets";
 import { Modal } from "@/components/Modal/Modal";
-import { PriceChart } from "@/components/PriceChart/PriceChart";
 import { BetResult } from "@/domain/bets";
-import { useResolvedBetChart } from "@/queries/useResolvedBetChart";
 import { HistoryBetChart } from "../HistoryView/HistoryBetChart";
-import { getThemeColor } from "../../utils";
 
 interface ResolvedBetModalProps {
   bet: ResolvedBet;

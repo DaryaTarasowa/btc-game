@@ -6,6 +6,5 @@ export function usePlayerScore(playerId: string | null) {
     queryKey: ["player", playerId],
     queryFn: ({ signal }) => getPlayer(signal),
     enabled: Boolean(playerId),
-    refetchInterval: 1_000,
   });
 }
