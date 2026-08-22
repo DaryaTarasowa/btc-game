@@ -1,6 +1,4 @@
-import { createContext, useCallback, useMemo, type PropsWithChildren } from "react";
-import type { ActiveBet, ResolvedBet } from "@/api/bets";
-import type { MarketPrice } from "@/api/prices";
+import { useCallback, useMemo, type PropsWithChildren } from "react";
 import { marketProductDisplayName } from "@/config/market";
 import { useMarket } from "@/context/useMarket";
 import { usePlayer } from "@/context/usePlayer";
@@ -8,8 +6,11 @@ import { BetDirection } from "@/domain/bets";
 import { useBetSynchronization } from "@/queries/useBetSynchronization";
 import { useCreateBet } from "@/queries/useCreateBet";
 import { useLivePrices, useRecentPrices } from "@/queries/useRecentPrices";
+import { createContext } from "react";
+import type { ActiveBet, ResolvedBet } from "@/api/bets";
+import type { MarketPrice } from "@/api/prices";
 
-export interface GameSessionContextValue {
+export interface GameSessionValue {
   activeBet: ActiveBet | null;
   resolvedBet: ResolvedBet | null;
   prices: MarketPrice[];
@@ -23,7 +24,7 @@ export interface GameSessionContextValue {
   chooseDirection: (direction: BetDirection) => void;
 }
 
-export const GameSessionContext = createContext<GameSessionContextValue | null>(null);
+export const GameSessionContext = createContext<GameSessionValue | null>(null);
 
 export function GameSessionProvider({ children }: PropsWithChildren) {
   const { playerId, player } = usePlayer();
@@ -37,36 +38,42 @@ export function GameSessionProvider({ children }: PropsWithChildren) {
     useBetSynchronization(playerId, player?.activeBetId);
   const createBet = useCreateBet(trackCreatedBet);
 
-  const chooseDirection = useCallback((direction: BetDirection) => {
-    if (!latestVisiblePoint) return;
-    createBet.mutate({ direction, point: latestVisiblePoint });
-  }, [createBet, latestVisiblePoint]);
+  const chooseDirection = useCallback(
+    (direction: BetDirection) => {
+      if (!latestVisiblePoint) return;
+      createBet.mutate({ direction, point: latestVisiblePoint });
+    },
+    [createBet, latestVisiblePoint],
+  );
 
-  const value = useMemo<GameSessionContextValue>(() => ({
-    activeBet,
-    resolvedBet,
-    prices,
-    latestVisiblePoint,
-    productName: marketProductDisplayName(product),
-    pricesError: recentPrices.error,
-    pricesPending: recentPrices.isPending,
-    creationError: createBet.error?.message,
-    isCreating: createBet.isPending,
-    isRecovering,
-    chooseDirection,
-  }), [
-    activeBet,
-    chooseDirection,
-    createBet.error,
-    createBet.isPending,
-    isRecovering,
-    latestVisiblePoint,
-    prices,
-    product,
-    recentPrices.error,
-    recentPrices.isPending,
-    resolvedBet,
-  ]);
+  const value = useMemo<GameSessionValue>(
+    () => ({
+      activeBet,
+      resolvedBet,
+      prices,
+      latestVisiblePoint,
+      productName: marketProductDisplayName(product),
+      pricesError: recentPrices.error,
+      pricesPending: recentPrices.isPending,
+      creationError: createBet.error?.message,
+      isCreating: createBet.isPending,
+      isRecovering,
+      chooseDirection,
+    }),
+    [
+      activeBet,
+      chooseDirection,
+      createBet.error,
+      createBet.isPending,
+      isRecovering,
+      latestVisiblePoint,
+      prices,
+      product,
+      recentPrices.error,
+      recentPrices.isPending,
+      resolvedBet,
+    ],
+  );
 
   return (
     <GameSessionContext.Provider value={value}>

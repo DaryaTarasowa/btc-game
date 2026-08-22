@@ -7,7 +7,7 @@ import {
   pageTitleStyle,
 } from "@/styles/ui";
 
-const submitButtonStyle = `${actionButtonStyle} bg-bitcoin text-[#14100a] enabled:hover:-translate-y-0.5 enabled:hover:bg-[#ffad42]`;
+const submitButtonStyle = `${actionButtonStyle} bg-accent text-[#14100a] enabled:hover:-translate-y-0.5 enabled:hover:bg-[#ffad42]`;
 
 export function AuthForm() {
   const auth = usePlayer();

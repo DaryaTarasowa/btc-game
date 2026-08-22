@@ -1,36 +1,28 @@
 import { useEffect, useRef, useState } from "react";
-import type { ActiveBet } from "@/api/bets";
-import type { MarketPrice } from "@/api/prices";
 import { GameControls } from "@/components/GamePanel/GameControls";
 import { usePlayer } from "@/context/usePlayer";
 import { BetDirection } from "@/domain/bets";
 import { useBetCountdown } from "@/queries/useBetCountdown";
 import { usePlayerScore } from "@/queries/usePlayerScore";
+
 import {
   metricCardStyle,
   metricLabelStyle,
   metricValueStyle,
   pageTitleStyle,
 } from "@/styles/ui";
+import { useGameSession } from "../../context/useGameSession";
 
-interface GamePanelProps {
-  activeBet: ActiveBet | null;
-  creationError?: string;
-  isCreating: boolean;
-  isRecovering: boolean;
-  latestVisiblePoint?: MarketPrice;
-  onChoose: (direction: BetDirection) => void;
-}
-
-export function GamePanel({
-  activeBet,
-  creationError,
-  isCreating,
-  isRecovering,
-  latestVisiblePoint,
-  onChoose,
-}: GamePanelProps) {
+export function GamePanel() {
   const { playerId } = usePlayer();
+  const {
+    activeBet,
+    creationError,
+    isCreating,
+    isRecovering,
+    latestVisiblePoint,
+    chooseDirection: onChoose,
+  } = useGameSession();
   const secondsRemaining = useBetCountdown(
     activeBet?.resolutionTargetTimestamp,
   );
@@ -57,14 +49,14 @@ export function GamePanel({
     <>
       <h1 className={pageTitleStyle}>Place your call</h1>
       <div
-        className={`${metricCardStyle} mx-auto mb-6 -mt-2 border-bitcoin/50 bg-[linear-gradient(145deg,rgba(247,147,26,0.2),rgba(247,147,26,0.06))] shadow-[0_12px_32px_rgba(247,147,26,0.1)]`}
+        className={`${metricCardStyle} mx-auto mb-6 -mt-2 border-accent/50 bg-[linear-gradient(145deg,rgba(247,147,26,0.2),rgba(247,147,26,0.06))] shadow[0_12px_32px_rgba(247,147,26,0.1)]`}
         aria-live="polite"
       >
         <span className={`${metricLabelStyle} text-[#ffc375]`}>
           Current score
         </span>
         <strong
-          className={`${metricValueStyle} text-[clamp(2.6rem,6vw,4rem)] text-white${scoreChanged ? " motion-safe:animate-[score-change_700ms_cubic-bezier(0.2,0.8,0.2,1)]" : ""}`}
+          className={`${metricValueStyle} text-[clamp(2.6rem,6vw,4rem)] text-white`}
         >
           {score ?? "—"}
         </strong>
@@ -72,7 +64,7 @@ export function GamePanel({
 
       {activeBet && (
         <div
-          className={`${metricCardStyle} mt-6.5 bg-[#080b12]/50 ${activeBet.direction === BetDirection.Up ? "border-up/40 text-up" : "border-down/40 text-down"}`}
+          className={`${metricCardStyle} mt-6.5 bg-[#080b12]/50 ${activeBet.direction === BetDirection.Up ? "border-success/40 text-success" : "border-error/40 text-error"}`}
         >
           <span className={metricLabelStyle}>
             {activeBet.direction.toUpperCase()} BET ACTIVE
