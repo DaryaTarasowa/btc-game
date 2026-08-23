@@ -2,7 +2,10 @@ import { Modal, ModalProps } from "@/components/Modal/Modal";
 import { fadedButtonStyle } from "@/styles/ui";
 import React from "react";
 
-interface ConfirmationModalProps extends ModalProps {
+interface ConfirmationModalProps {
+  eyebrow: ModalProps["eyebrow"];
+  title: ModalProps["title"];
+  description: ModalProps["description"];
   cancelLabel: string;
   confirmLabel: string;
   pendingLabel?: React.ReactNode;
