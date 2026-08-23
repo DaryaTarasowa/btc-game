@@ -3,7 +3,7 @@
 *.tfstate.*
 *.tfplan
 createPlayer.zip
-createBet.zip
+bets.zip
 confirmPlayerSignUp.zip
 getPrices.zip
 .terraform-tmp/
