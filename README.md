@@ -13,30 +13,39 @@ Only one bet can be active at a time.
 ## Architecture
 
 ```text
-                           Coinbase WebSocket
+                         Coinbase WebSocket
                                   |
                                   v
-                        ECS / Fargate price consumer
+                        ECS / Fargate Consumer
                                   |
-                    +-------------+-------------+
-                    |                           |
-                    v                           v
-               Bet resolution              Price history
-                    |                           |
-                    +------------+--------------+
-                                 |
-                                 v
-                              DynamoDB
-                                 |
-                                 +----------------------+
-                                                        |
-                                                        v
-                                                  AppSync Events
-                                                        |
-                                                        v
-React / Vite frontend <------ API Gateway <------ AWS Lambda
-        |
-        +------ Cognito authentication
+                                  v
+                           MarketPriceEvent
+                                  |
+              +-------------------+-------------------+
+              |                   |                   |
+              v                   v                   v
+        Bet Resolver       History Sampler     Live Price Publisher
+              |                   |                   |
+              |                   |                   v
+              |                   |              AppSync Events
+              |                   |                   |
+              +---------+---------+                   |
+                        |                             | live prices
+                        v                             v
+                    +---------+              +-------------------+
+                    | DynamoDB|              | React / Vite      |
+                    +---------+              | frontend          |
+                        ^                    +-------------------+
+                        |                             |
+                        |                             | REST API
+                        |                             v
+                        |                        API Gateway
+                        |                             |
+                        |                             v
+                        +-------------------------- Lambda
+                             history / bets /
+                             scores / active-bet polling
+
 ```
 
 The application uses:
