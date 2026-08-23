@@ -2,13 +2,29 @@
 
 A real-time BTC price prediction game built with React and an event-driven AWS backend.
 
+## Contents
+
+- [How it works](#how-it-works)
+- [Architecture](#architecture)
+- [Repository](#repository)
+- [Prerequisites](#prerequisites)
+- [Local development setup](#local-development-setup)
+- [AWS setup](#aws-setup)
+- [Updating the application](#updating-the-application)
+- [Testing](#testing)
+- [Safety](#safety)
+
 ## How it works
 
 Players predict whether the BTC price will move **up** or **down**.
 
 A bet is anchored to the latest market price visible to the player. After the 60-second target time is reached, the first subsequent Coinbase price event whose price differs from the starting price resolves the bet. A correct prediction increases the player's score by one.
 
-Only one bet can be active at a time.
+Only one bet per user can be active at a time.
+
+The player record's optional `activeBetId` is the authoritative recovery pointer; the browser does not persist active-bet state. Each bet keeps the stable `(playerId, betId)` key from creation through resolution.
+
+The frontend waits until the bet's earliest resolution timestamp before checking its status, and polls once per second only while the backend still reports the bet as active. This avoids roughly 60 unnecessary requests during the first minute of every bet.
 
 ## Architecture
 
@@ -59,16 +75,9 @@ The application uses:
 - AppSync Events for live browser updates
 - Terraform for long-lived AWS infrastructure
 
-The application is deployed to `eu-central-1`.
+The default AWS region is eu-central-1. Use another region by setting aws_region in variables.tf and passing the same region to the bootstrap script.
 
 Terraform owns the long-lived infrastructure. Price-consumer application releases have a separate lifecycle: the release script builds and pushes an immutable Git-SHA image, registers a new ECS task-definition revision, and updates the ECS service. Terraform intentionally does not own the currently selected application revision, so an unrelated infrastructure apply cannot roll the running consumer back.
-
-## User accounts
-
-Amazon Cognito provides email/password registration, login, logout, and durable sessions. Registrations are automatically confirmed by a minimal pre-sign-up trigger.
-The player record's optional `activeBetId` is the authoritative recovery pointer; the browser does not persist active-bet state. Each bet keeps the stable `(playerId, betId)` key from creation through resolution.
-
-The frontend waits until the bet's earliest resolution timestamp before checking its status, and polls once per second only while the backend still reports the bet as active. This avoids roughly 60 unnecessary requests during the first minute of every bet.
 
 ## Repository
 
@@ -90,7 +99,7 @@ Install locally:
 
 - Terraform 1.15+
 - AWS CLI v2 with `aws login` support
-- Node.js
+- Node.js 20+
 - pnpm
 - Docker, for price-consumer releases
 
@@ -143,10 +152,9 @@ btc-game-developer
 
 The boundary is a maximum permission set; it does not grant permissions by itself. The deployment user, its login configuration, the deployment policy, and the runtime boundary policy remain external bootstrap resources. Terraform does not create, import, update, or delete them.
 
-The initial IAM setup must be performed once by an **AWS administrator**. If the deployment user and both bootstrap policies are already configured, skip to [Log in to AWS](#log-in-to-aws). 
+The initial IAM setup must be performed once by an **AWS administrator**. If the deployment user and both bootstrap policies are already configured, skip to [Log in to AWS](#log-in-to-aws).
 
-<details>
-<summary>First-time IAM setup</summary>
+## 1. First-time IAM setup
 
 ### Create a deployment user
 
@@ -193,18 +201,19 @@ Existing deployments must rerun the bootstrap script once after adding the price
 
 </details>
 
-## Log in to AWS
+## 2. Log in to AWS
 
-Log in as the deployment user:
+Log in as the deployment user, e.g:
 
 ```powershell
 aws login --profile btc-game-developer
 ```
+
 Keep using this session for the deployment commands below.
 
-## Deploy
+## 3. Deploy
 
-### Infrastructure
+### 3.1 Infrastructure
 
 From `terraform/`:
 
@@ -225,7 +234,7 @@ View the deployed endpoints and resource identifiers:
 terraform output
 ```
 
-### Frontend
+### 3.2 Frontend
 
 From the repository root:
 
@@ -241,98 +250,39 @@ If dependencies are already installed:
 node scripts/deploy-frontend.mjs --skip-install
 ```
 
-### Price consumer
+### 3.3 Price consumer
 
-Terraform owns the ECS cluster, service shell, networking, IAM, logs, and ECR repository. Application releases own task definitions, the immutable revision selected by the service, and its operational desired count.
+The infrastructure deployment above creates the ECS/Fargate resources required by the price consumer, including the ECR repository, ECS cluster and service, networking, IAM roles, logs, and an initial bootstrap task definition.
 
-Terraform intentionally ignores the latter two service attributes, so an infrastructure apply cannot roll back a release or stop the consumer.
+The ECS service is initially created with `desired_count = 0`, so no container runs until the first real application image is deployed.
 
-#### First deployment in a new environment
+Terraform owns this long-lived infrastructure and the bootstrap task definition. It intentionally ignores later changes to the ECS service's selected task-definition revision and desired count. This allows application releases to be deployed independently without a later infrastructure apply rolling them back.
 
-The normal release script assumes that the ECS service already has a task definition. Bootstrap a new environment once:
+#### Deploy the price consumer
 
-1. Apply the reviewed Terraform foundation for ECR, the ECS cluster, roles, networking, and logs.
-2. Build the consumer and push its first immutable Git-SHA image.
-
-**Linux:**
-
-```bash
-repository=$(terraform -chdir=terraform output -raw price_consumer_ecr_repository_url)
-sha=$(git rev-parse HEAD)
-docker build --tag "btc-game-price-consumer:$sha" backend/price-consumer
-aws ecr get-login-password | docker login --username AWS --password-stdin "${repository%%/*}"
-docker tag "btc-game-price-consumer:$sha" "${repository}:$sha"
-docker push "${repository}:$sha"
-```
-
-**Windows (PowerShell):**
-
-```powershell
-$repository = terraform -chdir=terraform output -raw price_consumer_ecr_repository_url
-$sha = git rev-parse HEAD
-docker build --tag "btc-game-price-consumer:$sha" backend/price-consumer
-aws ecr get-login-password | docker login --username AWS --password-stdin ($repository.Split('/')[0])
-docker tag "btc-game-price-consumer:$sha" "${repository}:$sha"
-docker push "${repository}:$sha"
-```
-
-3. Create an initial ECS task-definition JSON using the Terraform-created execution role, task role, log group, and application configuration, then register it once.
-
-**Linux:**
-
-```bash
-task_definition_arn=$(
-  aws ecs register-task-definition \
-    --cli-input-json file://initial-price-consumer-task-definition.json \
-    --query taskDefinition.taskDefinitionArn \
-    --output text \
-    --no-cli-pager
-)
-```
-
-**Windows (PowerShell):**
-
-```powershell
-$taskDefinitionArn = aws ecs register-task-definition `
-  --cli-input-json file://initial-price-consumer-task-definition.json `
-  --query taskDefinition.taskDefinitionArn `
-  --output text `
-  --no-cli-pager
-```
-
-4. Create the Terraform-owned ECS service using that one-time ARN.
-
-**Linux:**
-
-```bash
-terraform -chdir=terraform apply -var="price_consumer_initial_task_definition_arn=${task_definition_arn}"
-```
-
-**Windows (PowerShell):**
-
-```powershell
-terraform -chdir=terraform apply -var "price_consumer_initial_task_definition_arn=$taskDefinitionArn"
-```
-
-After the service exists, omit the initial ARN variable. Normal Terraform plans ignore release-selected task-definition and desired-count changes.
-
-#### Normal releases
-
-Commit application changes and prepare an immutable Git-SHA release from the repository root:
+After `terraform apply` has completed successfully, commit the application changes and run from the repository root:
 
 ```powershell
 node scripts/deploy-price-consumer.mjs
 ```
 
-This builds the container locally without changing infrastructure. Review the release metadata, then explicitly deploy it:
+The script verifies that the repository is clean, builds the price-consumer container, tags it with the current Git commit SHA, and saves the release metadata. It does not deploy anything yet.
+
+Review the release metadata, then deploy it:
 
 ```powershell
 node scripts/deploy-price-consumer.mjs --apply
 ```
 
-The apply mode authenticates Docker using the current AWS CLI identity, pushes the immutable image, reads the service's current task definition, updates the consumer image and runtime configuration, and registers the resulting revision.
+The script:
 
-It then updates the ECS service to that revision with desired count one and reports success when the new PRIMARY task is running with nothing pending. Older zero-task deployments do not delay completion. It does not run Terraform, and no credentials are stored in the image or script.
+1. pushes the immutable Git-SHA image to ECR;
+2. reads the ECS service's current task definition;
+3. creates a new task-definition revision using the new image and current runtime configuration;
+4. updates the ECS service to that revision and sets `desired_count` to `1`;
+5. waits until the new task is running.
+
+On the first deployment, the current task definition is the Terraform-created bootstrap definition. On later deployments, it is the previously deployed application revision. The same two commands are therefore used for the first deployment and every subsequent release.
 
 ## Updating the application
 

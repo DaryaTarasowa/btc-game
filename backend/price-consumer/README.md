@@ -2,7 +2,15 @@
 
 This standalone TypeScript service connects to Coinbase Exchange's public WebSocket feed and subscribes to the configured channels and products.
 
-The raw application stream contains every normalized, strictly source-time-ordered **changed-price** event. It is kept separate for future consumers such as bet resolution. Equal or older source timestamps are dropped before both raw application processing and history processing.
+Each normalized changed-price event is processed in source-time order and drives three independent consumers:
+
+- **Bet resolution** — active bets whose resolution time has passed are resolved against the next changed market price.
+- **Price history** — real market events are sampled at one-second resolution and stored in DynamoDB for chart history.
+- **Live prices** — market-price updates are published to AppSync Events for realtime delivery to connected clients.
+
+Equal or older source timestamps are dropped before application processing.
+
+## Price history
 
 Chart history is a derived stream. The service stores an event when its Coinbase `sourceTimestamp` is at least one second after the most recently stored source timestamp. It never creates synthetic points, and a long gap produces only the next real changed-price event.
 
@@ -10,7 +18,20 @@ Prices remain decimal strings so JavaScript floating-point conversion cannot dis
 
 At startup, the service queries DynamoDB once per configured product and initializes independent in-memory sampling timestamps. It does not read DynamoDB for each market event. A product's timestamp advances only after a successful write; a failed write leaves a later eligible event able to retry naturally.
 
-Set `PRICE_HISTORY_TABLE` to the DynamoDB table name. AWS credentials and region use the normal AWS SDK credential chain.
+## Configuration
+
+The service uses the following environment variables:
+
+- `PRICE_HISTORY_TABLE` — DynamoDB price-history table.
+- `BETS_TABLE` — DynamoDB bets table.
+- `PLAYERS_TABLE` — DynamoDB players table.
+- `MARKET_PRODUCTS` — configured Coinbase products.
+- `COINBASE_CHANNELS` — configured Coinbase WebSocket channels.
+- `APPSYNC_EVENTS_ENDPOINT` — AppSync Events HTTP endpoint.
+- `APPSYNC_EVENTS_CHANNEL_PREFIX` — channel prefix used for live-price events.
+- `APPSYNC_REGION` — AWS region used when signing AppSync Events requests.
+
+AWS credentials use the normal AWS SDK credential chain.
 
 ## Run locally
 
@@ -18,42 +39,8 @@ Requires Node.js 22+.
 
 ```powershell
 pnpm install
+
 $env:PRICE_HISTORY_TABLE = "btc-game-price-history"
+
 pnpm dev
-```
-
-On Linux, macOS, or WSL:
-
-```sh
-PRICE_HISTORY_TABLE=btc-game-price-history pnpm dev
-```
-
-Build and run the compiled application:
-
-```powershell
-pnpm build
-pnpm start
-```
-
-## Run with Docker
-
-```powershell
-docker build -t btc-price-consumer .
-docker run --rm -e PRICE_HISTORY_TABLE=btc-game-price-history btc-price-consumer
-```
-
-Example normalized output:
-
-```json
-{"type":"price_update","source":"coinbase","product":"BTC-USD","price":"59432.10","sourceTimestamp":"2026-08-18T18:30:12.123456Z","receivedTimestamp":"2026-08-18T18:30:12.140Z","sequence":123456789,"tradeId":987654321}
-```
-
-Malformed JSON, invalid ticker payloads, and unexpected message types are reported without terminating the process. Closed, failed, or stale connections reconnect automatically with capped exponential backoff and jitter. DynamoDB write failures are logged with the affected product and source timestamp.
-
-## Run tests
-
-The sampler and DynamoDB item/TTL mapping tests do not connect to Coinbase or AWS:
-
-```sh
-pnpm test
 ```
