@@ -5,6 +5,7 @@ import { HistoryBetList } from "@/components/HistoryView/HistoryBetList";
 import { HistoryLoginRequired } from "@/components/HistoryView/HistoryLoginRequired";
 import { usePlayer } from "@/context/usePlayer";
 import { eyebrowStyle, panelStyle, sectionHeaderStyle } from "@/styles/ui";
+import { queryKeys } from "@/queries/queryKeys";
 
 const emptyStyle = "mt-10 text-muted";
 
@@ -12,7 +13,7 @@ export function HistoryView() {
   const { playerId, player } = usePlayer();
   const [selectedBetId, setSelectedBetId] = useState<string | null>(null);
   const history = useQuery({
-    queryKey: ["bets", playerId, "history"],
+    queryKey: playerId ? queryKeys.betHistory(playerId) : queryKeys.disabled,
     queryFn: ({ signal }) => getCompletedBets(signal),
     enabled: Boolean(playerId),
   });

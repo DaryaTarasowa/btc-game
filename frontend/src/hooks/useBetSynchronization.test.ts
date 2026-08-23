@@ -13,10 +13,10 @@ import {
 } from "@/api/bets";
 import { BetStatus } from "@/domain/bets";
 import {
-  betStatusQueryKey,
   millisecondsUntilTarget,
   useBetSynchronization,
 } from "@/hooks/useBetSynchronization";
+import { queryKeys } from "../queries/queryKeys";
 
 vi.mock("@/api/bets", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/api/bets")>();
@@ -233,7 +233,7 @@ test("stale cached active data is refreshed during persisted recovery", async ()
     },
   });
 
-  queryClient.setQueryData(betStatusQueryKey("player-1", "bet-1"), active);
+  queryClient.setQueryData(queryKeys.bet("player-1", "bet-1"), active);
 
   const wrapper = ({ children }: PropsWithChildren) =>
     createElement(QueryClientProvider, { client: queryClient }, children);
@@ -324,7 +324,7 @@ test("bet synchronization resumes after a temporary recovery failure", async () 
   // Simulate connectivity returning by asking React Query to retry/refetch.
   await act(async () => {
     await queryClient.refetchQueries({
-      queryKey: betStatusQueryKey("player-1", "bet-1"),
+      queryKey: queryKeys.bet("player-1", "bet-1"),
     });
   });
   await waitFor(() => {

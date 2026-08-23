@@ -7,9 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { subscribeToLivePrices } from "@/api/livePrices";
 import type { MarketPrice } from "@/api/prices";
 import { useMarket } from "@/context/useMarket";
-
-const recentPricesQueryKey = (product: string) =>
-  ["prices", product, "recent"] as const;
+import { queryKeys } from "./queryKeys";
 
 // Sacrificed efficiency for the readability/correctness. 3 minute window should work fine.
 export function appendRecentPrice(
@@ -36,7 +34,7 @@ export function appendRecentPrice(
 export function useRecentPrices() {
   const { product } = useMarket();
   return useQuery({
-    queryKey: recentPricesQueryKey(product),
+    queryKey: queryKeys.recentPrices(product),
     queryFn: ({ signal }) => getRecentPrices({ product, signal }),
   });
 }
@@ -53,7 +51,7 @@ export function useLivePrices() {
       if (price.product !== product) return;
 
       queryClient.setQueryData<MarketPrice[]>(
-        recentPricesQueryKey(product),
+        queryKeys.recentPrices(product),
         (current = []) => appendRecentPrice(current, price),
       );
     }).then((cleanup) => {

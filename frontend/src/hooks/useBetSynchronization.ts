@@ -8,9 +8,7 @@ import {
   type ResolvedBet,
 } from "@/api/bets";
 import { BetStatus } from "@/domain/bets";
-
-export const betStatusQueryKey = (playerId: string, betId: string) =>
-  ["bets", playerId, betId] as const;
+import { queryKeys } from "../queries/queryKeys";
 
 export function millisecondsUntilTarget(bet: ActiveBet, now = Date.now()) {
   return Math.max(0, Date.parse(bet.resolutionTargetTimestamp) - now);
@@ -57,7 +55,7 @@ export function useBetSynchronization(
 
   const query = useQuery({
     queryKey:
-      playerId && betId ? betStatusQueryKey(playerId, betId) : ["bets", "idle"],
+      playerId && betId ? queryKeys.bet(playerId, betId) : queryKeys.disabled,
 
     queryFn: ({ signal }) => getBet(betId!, signal),
 
@@ -101,7 +99,7 @@ export function useBetSynchronization(
     setIsPolling(false);
 
     void queryClient.invalidateQueries({
-      queryKey: ["player", playerId],
+      queryKey: queryKeys.player(playerId),
     });
   }, [isRecovering, playerId, query.data, query.isFetching, queryClient]);
 
@@ -117,7 +115,7 @@ export function useBetSynchronization(
     (bet: ActiveBet) => {
       if (!playerId) return;
 
-      queryClient.setQueryData(betStatusQueryKey(playerId, bet.betId), bet);
+      queryClient.setQueryData(queryKeys.bet(playerId, bet.betId), bet);
 
       setBetId(bet.betId);
       setResolvedBet(null);
@@ -128,9 +126,7 @@ export function useBetSynchronization(
   );
 
   const activeBet: ActiveBet | null =
-    !isRecovering && isActiveBet(query.data)
-      ? query.data
-      : null;
+    !isRecovering && isActiveBet(query.data) ? query.data : null;
 
   return {
     activeBet,
