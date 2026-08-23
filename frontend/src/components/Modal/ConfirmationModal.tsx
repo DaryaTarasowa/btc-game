@@ -6,7 +6,7 @@ interface ConfirmationModalProps {
   eyebrow: ModalProps["eyebrow"];
   title: ModalProps["title"];
   description: ModalProps["description"];
-  contained: ModalProps["contained"];
+  contained?: ModalProps["contained"];
   cancelLabel: string;
   confirmLabel: string;
   pendingLabel?: React.ReactNode;
