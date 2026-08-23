@@ -1,7 +1,7 @@
 import type { ResolvedBet } from "@/api/bets";
 import { Modal } from "@/components/Modal/Modal";
 import { BetResult } from "@/domain/bets";
-import { HistoryBetChart } from "../HistoryView/HistoryBetChart";
+import { HistoryBetChart } from "@/views/HistoryView/HistoryBetChart";
 
 interface ResolvedBetModalProps {
   bet: ResolvedBet;

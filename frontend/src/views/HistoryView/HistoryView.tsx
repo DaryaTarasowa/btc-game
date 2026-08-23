@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getCompletedBets, reconstructableBetHistory } from "@/api/bets";
-import { HistoryBetList } from "@/components/HistoryView/HistoryBetList";
-import { HistoryLoginRequired } from "@/components/HistoryView/HistoryLoginRequired";
+import { HistoryBetList } from "@/views/HistoryView/HistoryBetList";
+import { HistoryLoginRequired } from "@/views/HistoryView/HistoryLoginRequired";
 import { usePlayer } from "@/context/usePlayer";
 import { eyebrowStyle, panelStyle, sectionHeaderStyle } from "@/styles/ui";
 import { queryKeys } from "@/queryKeys";

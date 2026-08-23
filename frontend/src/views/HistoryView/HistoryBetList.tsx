@@ -1,5 +1,5 @@
 import type { ResolvedBet } from "@/api/bets";
-import { HistoryBetChart } from "@/components/HistoryView/HistoryBetChart";
+import { HistoryBetChart } from "@/views/HistoryView/HistoryBetChart";
 import { BetDirection, BetResult } from "@/domain/bets";
 import { buttonStyle } from "@/styles/ui";
 

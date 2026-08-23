@@ -7,7 +7,7 @@ import { GameSessionProvider } from "@/context/GameSessionContext";
 import { useGameSession } from "@/context/useGameSession";
 import { usePlayer } from "@/context/usePlayer";
 import { panelStyle, pageStyle } from "@/styles/ui";
-import { LoadingSpinner } from "./LoadingSpinner/LoadingSpinner";
+import { LoadingSpinner } from "@/components/LoadingSpinner/LoadingSpinner";
 
 function PlayerPanelContent() {
   const { playerId, isLoading, playerError } = usePlayer();

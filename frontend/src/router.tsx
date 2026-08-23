@@ -3,11 +3,10 @@ import {
   createRoute,
   createRouter,
 } from "@tanstack/react-router";
-import { AppLayout } from "@/components/AppLayout";
-import { GameWorkspaceLayout } from "@/components/GameWorkspaceLayout";
-import { HistoryView } from "@/components/HistoryView/HistoryView";
-import { ActiveBetChart } from "@/components/MarketView/ActiveBetChart";
-import { MarketView } from "./components/MarketView/MarketView";
+import { AppLayout } from "@/views/AppLayout";
+import { GameWorkspaceLayout } from "@/views/GameWorkspaceLayout";
+import { HistoryView } from "@/views/HistoryView/HistoryView";
+import { MarketView } from "@/views/MarketView/MarketView";
 
 const rootRoute = createRootRoute({ component: AppLayout });
 const gameWorkspaceRoute = createRoute({

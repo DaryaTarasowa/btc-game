@@ -1,7 +1,6 @@
-import { ActiveBetChart } from "@/components/MarketView/ActiveBetChart";
-import { DefaultBetChart } from "@/components/MarketView/DefaultBetChart";
+import { ActiveBetChart } from "@/views/MarketView/ActiveBetChart";
+import { DefaultBetChart } from "@/views/MarketView/DefaultBetChart";
 import { useGameSession } from "@/context/useGameSession";
-import { panelStyle } from "@/styles/ui";
 
 export function MarketView() {
   const session = useGameSession();
