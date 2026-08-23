@@ -3,7 +3,7 @@ import { marketProductDisplayName } from "@/config/market";
 import { useMarket } from "@/context/useMarket";
 import { usePlayer } from "@/context/usePlayer";
 import { BetDirection } from "@/domain/bets";
-import { useBetSynchronization } from "@/queries/useBetSynchronization";
+import { useBetSynchronization } from "@/hooks/useBetSynchronization";
 import { useCreateBet } from "@/queries/useCreateBet";
 import { useLivePrices, useRecentPrices } from "@/queries/useRecentPrices";
 import { createContext } from "react";

@@ -23,7 +23,7 @@ afterEach(() => {
 });
 
 test("loads authoritative resolved status using only the bet ID", async () => {
-  vi.stubEnv("VITE_CREATE_BET_URL", "https://example.test/bets");
+  vi.stubEnv("VITE_BETS_URL", "https://example.test/bets");
   const resolved = {
     betId: "bet-id",
     playerId: "550e8400-e29b-41d4-a716-446655440000",
@@ -47,7 +47,7 @@ test("loads authoritative resolved status using only the bet ID", async () => {
 });
 
 test("sends the exact visible price and event timestamp", async () => {
-  vi.stubEnv("VITE_CREATE_BET_URL", "https://example.test/bets");
+  vi.stubEnv("VITE_BETS_URL", "https://example.test/bets");
   const response = {
     betId: "bet-id",
     playerId: "550e8400-e29b-41d4-a716-446655440000",
@@ -93,7 +93,7 @@ test("sends the exact visible price and event timestamp", async () => {
 });
 
 test("uses a backend bet-creation error when one is provided", async () => {
-  vi.stubEnv("VITE_CREATE_BET_URL", "https://example.test/bets");
+  vi.stubEnv("VITE_BETS_URL", "https://example.test/bets");
   vi.stubGlobal(
     "fetch",
     vi.fn().mockResolvedValue({
@@ -115,7 +115,7 @@ test("uses a backend bet-creation error when one is provided", async () => {
 });
 
 test("falls back to the HTTP status for a non-JSON bet-creation failure", async () => {
-  vi.stubEnv("VITE_CREATE_BET_URL", "https://example.test/bets");
+  vi.stubEnv("VITE_BETS_URL", "https://example.test/bets");
   vi.stubGlobal(
     "fetch",
     vi.fn().mockResolvedValue({
@@ -141,7 +141,7 @@ test("falls back to the HTTP status for a non-JSON bet-creation failure", async 
 test.each([403, 404])(
   "treats status %s as an inaccessible bet",
   async (status) => {
-    vi.stubEnv("VITE_CREATE_BET_URL", "https://example.test/bets/");
+    vi.stubEnv("VITE_BETS_URL", "https://example.test/bets/");
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status }));
     const { BetNotFoundError } = await import("@/api/bets");
     await expect(getBet("bet with spaces")).rejects.toBeInstanceOf(
@@ -155,7 +155,7 @@ test.each([403, 404])(
 );
 
 test("reports other status failures and rejects malformed successful data", async () => {
-  vi.stubEnv("VITE_CREATE_BET_URL", "https://example.test/bets");
+  vi.stubEnv("VITE_BETS_URL", "https://example.test/bets");
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 503 }));
   await expect(getBet("bet-1")).rejects.toThrow("could not be loaded (503)");
   vi.stubGlobal(
@@ -170,12 +170,12 @@ test("reports other status failures and rejects malformed successful data", asyn
 });
 
 test("requires a configured betting endpoint", async () => {
-  vi.stubEnv("VITE_CREATE_BET_URL", "");
+  vi.stubEnv("VITE_BETS_URL", "");
   await expect(getBet("bet-1")).rejects.toThrow("endpoint is not configured");
 });
 
 test("loads the authenticated user's completed bets", async () => {
-  vi.stubEnv("VITE_CREATE_BET_URL", "https://example.test/bets/");
+  vi.stubEnv("VITE_BETS_URL", "https://example.test/bets/");
   const bet = {
     betId: "bet-id",
     playerId: "subject-1",

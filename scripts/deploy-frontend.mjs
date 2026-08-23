@@ -1,5 +1,12 @@
 import { spawnSync } from "node:child_process";
-import { mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import {
+  mkdtemp,
+  readFile,
+  readdir,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -43,13 +50,66 @@ try {
     [`-chdir=${terraformDirectory}`, "output", "-raw", "price_history_url"],
     { captureOutput: true },
   ).trim();
-  const userPoolId = run("terraform", [`-chdir=${terraformDirectory}`, "output", "-raw", "cognito_user_pool_id"], { captureOutput: true }).trim();
-  const userPoolClientId = run("terraform", [`-chdir=${terraformDirectory}`, "output", "-raw", "cognito_user_pool_client_id"], { captureOutput: true }).trim();
-  const marketProducts = run("terraform", [`-chdir=${terraformDirectory}`, "output", "-raw", "market_products"], { captureOutput: true }).trim();
-  const defaultMarketProduct = run("terraform", [`-chdir=${terraformDirectory}`, "output", "-raw", "default_market_product"], { captureOutput: true }).trim();
-  const livePriceChannelPrefix = run("terraform", [`-chdir=${terraformDirectory}`, "output", "-raw", "live_price_event_channel_prefix"], { captureOutput: true }).trim();
-  const livePriceEndpoint = run("terraform", [`-chdir=${terraformDirectory}`, "output", "-raw", "live_price_event_http_endpoint"], { captureOutput: true }).trim();
-  const livePriceApiKey = run("terraform", [`-chdir=${terraformDirectory}`, "output", "-raw", "live_price_event_api_key"], { captureOutput: true }).trim();
+  const userPoolId = run(
+    "terraform",
+    [`-chdir=${terraformDirectory}`, "output", "-raw", "cognito_user_pool_id"],
+    { captureOutput: true },
+  ).trim();
+  const userPoolClientId = run(
+    "terraform",
+    [
+      `-chdir=${terraformDirectory}`,
+      "output",
+      "-raw",
+      "cognito_user_pool_client_id",
+    ],
+    { captureOutput: true },
+  ).trim();
+  const marketProducts = run(
+    "terraform",
+    [`-chdir=${terraformDirectory}`, "output", "-raw", "market_products"],
+    { captureOutput: true },
+  ).trim();
+  const defaultMarketProduct = run(
+    "terraform",
+    [
+      `-chdir=${terraformDirectory}`,
+      "output",
+      "-raw",
+      "default_market_product",
+    ],
+    { captureOutput: true },
+  ).trim();
+  const livePriceChannelPrefix = run(
+    "terraform",
+    [
+      `-chdir=${terraformDirectory}`,
+      "output",
+      "-raw",
+      "live_price_event_channel_prefix",
+    ],
+    { captureOutput: true },
+  ).trim();
+  const livePriceEndpoint = run(
+    "terraform",
+    [
+      `-chdir=${terraformDirectory}`,
+      "output",
+      "-raw",
+      "live_price_event_http_endpoint",
+    ],
+    { captureOutput: true },
+  ).trim();
+  const livePriceApiKey = run(
+    "terraform",
+    [
+      `-chdir=${terraformDirectory}`,
+      "output",
+      "-raw",
+      "live_price_event_api_key",
+    ],
+    { captureOutput: true },
+  ).trim();
 
   if (!skipInstall) {
     run("pnpm", ["install", "--frozen-lockfile"], { cwd: frontendDirectory });
@@ -60,7 +120,7 @@ try {
     env: {
       ...process.env,
       VITE_CREATE_PLAYER_URL: createPlayerUrl,
-      VITE_CREATE_BET_URL: createBetUrl,
+      VITE_BETS_URL: createBetUrl,
       VITE_GET_PRICES_URL: priceHistoryUrl,
       VITE_COGNITO_USER_POOL_ID: userPoolId,
       VITE_COGNITO_USER_POOL_CLIENT_ID: userPoolClientId,
@@ -118,7 +178,9 @@ try {
     deployment.jobId,
   ]);
 
-  console.log(`Started Amplify deployment job ${deployment.jobId} for app ${appId}.`);
+  console.log(
+    `Started Amplify deployment job ${deployment.jobId} for app ${appId}.`,
+  );
 } finally {
   await rm(temporaryDirectory, { recursive: true, force: true });
 }
@@ -156,7 +218,9 @@ function run(command, arguments_, options = {}) {
     throw new Error(`Could not run ${command}: ${result.error.message}`);
   }
   if (result.status !== 0) {
-    throw new Error(`${command} failed with exit code ${result.status ?? "unknown"}.`);
+    throw new Error(
+      `${command} failed with exit code ${result.status ?? "unknown"}.`,
+    );
   }
 
   return result.stdout ?? "";
@@ -219,7 +283,10 @@ async function createZip(sourceDirectory, destination) {
   end.writeUInt32LE(centralDirectory.length, 12);
   end.writeUInt32LE(offset, 16);
 
-  await writeFile(destination, Buffer.concat([...localParts, centralDirectory, end]));
+  await writeFile(
+    destination,
+    Buffer.concat([...localParts, centralDirectory, end]),
+  );
 }
 
 async function listFiles(directory) {
@@ -241,8 +308,12 @@ async function listFiles(directory) {
 function dosDateTime(value) {
   const year = Math.max(value.getFullYear(), 1980);
   return {
-    date: ((year - 1980) << 9) | ((value.getMonth() + 1) << 5) | value.getDate(),
-    time: (value.getHours() << 11) | (value.getMinutes() << 5) | (value.getSeconds() >> 1),
+    date:
+      ((year - 1980) << 9) | ((value.getMonth() + 1) << 5) | value.getDate(),
+    time:
+      (value.getHours() << 11) |
+      (value.getMinutes() << 5) |
+      (value.getSeconds() >> 1),
   };
 }
 

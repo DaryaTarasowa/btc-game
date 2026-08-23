@@ -39,7 +39,7 @@ export function LoadingSpinner({
           strokeLinecap="round"
         />
       </svg>
-      {label.length && <span>{label}</span>}
+      {label.length > 0 && <span>{label}</span>}
     </span>
   );
 }

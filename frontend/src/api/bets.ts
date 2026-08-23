@@ -47,7 +47,7 @@ export async function createBet({
   direction,
   point,
 }: CreateBetInput): Promise<ActiveBet> {
-  const endpoint = import.meta.env.VITE_CREATE_BET_URL;
+  const endpoint = import.meta.env.VITE_BETS_URL;
   if (!endpoint) throw new Error("The bet endpoint is not configured.");
 
   const response = await fetch(endpoint, {
@@ -79,7 +79,7 @@ export async function getBet(
   betId: string,
   signal?: AbortSignal,
 ): Promise<Bet> {
-  const endpoint = import.meta.env.VITE_CREATE_BET_URL; //TODO introduce a separate endpoint for bet retrieval or rename
+  const endpoint = import.meta.env.VITE_BETS_URL;
   if (!endpoint) throw new Error("The bet endpoint is not configured.");
 
   const response = await fetch(
@@ -100,7 +100,7 @@ export async function getBet(
 export async function getCompletedBets(
   signal?: AbortSignal,
 ): Promise<ResolvedBet[]> {
-  const endpoint = import.meta.env.VITE_CREATE_BET_URL;
+  const endpoint = import.meta.env.VITE_BETS_URL;
   if (!endpoint) throw new Error("The bet endpoint is not configured.");
   const response = await fetch(endpoint.replace(/\/$/, ""), {
     headers: await authHeaders(),

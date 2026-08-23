@@ -41,7 +41,7 @@ function GameWorkspace() {
       <section className={`${panelStyle} max-[820px]:text-left`}>
         {isLoading ? (
           <div className="grid min-h-48 place-items-center">
-            <LoadingSpinner color="var(--color-accent)" />
+            <LoadingSpinner color="var(--color-accent)" size={50} />
           </div>
         ) : playerId ? (
           <GamePanel />
