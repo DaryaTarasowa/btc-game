@@ -1,6 +1,6 @@
 import type { ResolvedBet } from "@/api/bets";
 import { PriceChart } from "@/components/PriceChart/PriceChart";
-import { useResolvedBetChart } from "@/queries/useResolvedBetChart";
+import { useResolvedBetChart } from "@/hooks/useResolvedBetChart";
 import type { PriceChartProps } from "@/components/PriceChart/PriceChart";
 import { BetDirection, BetResult } from "@/domain/bets";
 import { getThemeColor } from "@/utils";

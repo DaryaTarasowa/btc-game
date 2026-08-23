@@ -3,11 +3,12 @@ import { GameControls } from "@/components/GamePanel/GameControls";
 import { usePlayer } from "@/context/usePlayer";
 import { BetDirection } from "@/domain/bets";
 import { useBetCountdown } from "@/hooks/useBetCountdown";
-import { usePlayerScore } from "@/queries/usePlayerScore";
+import { usePlayerScore } from "@/hooks/usePlayerScore";
 import { Link } from "@tanstack/react-router";
+import { InfoModal } from "@/components/GamePanel/InfoModal";
 
 import { cardStyle, accentCardStyle, sectionHeaderStyle } from "@/styles/ui";
-import { useGameSession } from "../../context/useGameSession";
+import { useGameSession } from "@/context/useGameSession";
 
 export function GamePanel() {
   const { playerId } = usePlayer();
@@ -37,10 +38,24 @@ export function GamePanel() {
     previousScoreRef.current = score;
   }, [score]);
 
+  const [infoModalOpen, setInfoModalOpen] = useState(false);
+
   return (
     <>
       {!activeBet ? (
-        <div className={`${sectionHeaderStyle}`}>Place your call</div>
+        <div>
+          <div className="mb-2 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setInfoModalOpen(true)}
+              className="text-sm font-medium text-muted underline decoration-white/30 underline-offset-4 transition hover:text-white hover:decoration-white/70 mb-0 cursor-pointer"
+            >
+              How to play
+            </button>
+          </div>
+
+          <div className={sectionHeaderStyle}>Place your call</div>
+        </div>
       ) : (
         <div className={`${sectionHeaderStyle}`}>Wait for resolution</div>
       )}
@@ -94,6 +109,8 @@ export function GamePanel() {
         onChoose={onChoose}
       />
       {creationError && <p className="mt-5.5 text-error">{creationError}</p>}
+
+      {infoModalOpen && <InfoModal onClose={() => setInfoModalOpen(false)} />}
     </>
   );
 }

@@ -5,7 +5,7 @@ import { HistoryBetList } from "@/components/HistoryView/HistoryBetList";
 import { HistoryLoginRequired } from "@/components/HistoryView/HistoryLoginRequired";
 import { usePlayer } from "@/context/usePlayer";
 import { eyebrowStyle, panelStyle, sectionHeaderStyle } from "@/styles/ui";
-import { queryKeys } from "@/queries/queryKeys";
+import { queryKeys } from "@/queryKeys";
 
 const emptyStyle = "mt-10 text-muted";
 

@@ -16,7 +16,7 @@ import {
   millisecondsUntilTarget,
   useBetSynchronization,
 } from "@/hooks/useBetSynchronization";
-import { queryKeys } from "../queries/queryKeys";
+import { queryKeys } from "@/queryKeys";
 
 vi.mock("@/api/bets", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/api/bets")>();

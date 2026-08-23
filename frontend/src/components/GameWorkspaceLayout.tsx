@@ -38,7 +38,7 @@ function GameWorkspace() {
     <div
       className={`${pageStyle} grid grid-cols-[minmax(260px,0.72fr)_minmax(0,1.8fr)] items-start gap-6 max-[820px]:grid-cols-1`}
     >
-      <section className={`${panelStyle} max-[820px]:text-left`}>
+      <section className={`${panelStyle} relative max-[820px]:text-left`}>
         {isLoading ? (
           <div className="grid min-h-48 place-items-center">
             <LoadingSpinner color="var(--color-accent)" size={50} />

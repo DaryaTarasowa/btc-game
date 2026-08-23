@@ -8,7 +8,7 @@ import {
   type ResolvedBet,
 } from "@/api/bets";
 import { BetStatus } from "@/domain/bets";
-import { queryKeys } from "../queries/queryKeys";
+import { queryKeys } from "@/queryKeys";
 
 export function millisecondsUntilTarget(bet: ActiveBet, now = Date.now()) {
   return Math.max(0, Date.parse(bet.resolutionTargetTimestamp) - now);

@@ -15,7 +15,7 @@ import {
 } from "aws-amplify/auth";
 import { deletePlayer, ensurePlayer, type Player } from "@/api/players";
 import { useQueryClient } from "@tanstack/react-query";
-import { queryKeys } from "../queries/queryKeys";
+import { queryKeys } from "@/queryKeys";
 
 export interface PlayerContextValue {
   playerId: string | null;

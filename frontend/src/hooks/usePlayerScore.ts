@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { getPlayer } from "@/api/players";
-import { queryKeys } from "./queryKeys";
+import { queryKeys } from "@/queryKeys";
 
 export function usePlayerScore(playerId: string | null) {
   return useQuery({

@@ -1,35 +1,89 @@
 # BTC game
 
-A small serverless BTC prediction game deployed on AWS.
+A real-time BTC price prediction game built with React and an event-driven AWS backend.
+
+## How it works
+
+Players predict whether the BTC price will move **up** or **down**.
+
+A bet is anchored to the latest market price visible to the player. After the 60-second target time is reached, the first subsequent Coinbase price event whose price differs from the starting price resolves the bet. A correct prediction increases the player's score by one.
+
+Only one bet can be active at a time.
 
 ## Architecture
 
+```text
+                           Coinbase WebSocket
+                                  |
+                                  v
+                        ECS / Fargate price consumer
+                                  |
+                    +-------------+-------------+
+                    |                           |
+                    v                           v
+               Bet resolution              Price history
+                    |                           |
+                    +------------+--------------+
+                                 |
+                                 v
+                              DynamoDB
+                                 |
+                                 +----------------------+
+                                                        |
+                                                        v
+                                                  AppSync Events
+                                                        |
+                                                        v
+React / Vite frontend <------ API Gateway <------ AWS Lambda
+        |
+        +------ Cognito authentication
+```
+
+The application uses:
+
 - React/Vite frontend hosted on AWS Amplify
-- HTTP API provided by API Gateway
-- Serverless backend using AWS Lambda
-- DynamoDB for application data
-- Long-running BTC price consumer on ECS/Fargate
-- Infrastructure managed with Terraform
+- Amazon Cognito for authentication
+- API Gateway for the HTTP API
+- AWS Lambda for request/response backend operations
+- DynamoDB for application data and retained market history
+- a long-running BTC price consumer on ECS/Fargate
+- AppSync Events for live browser updates
+- Terraform for long-lived AWS infrastructure
 
 The application is deployed to `eu-central-1`.
 
+The browser does not connect directly to Coinbase. A single long-running price consumer maintains the upstream WebSocket connection and converts incoming Coinbase messages into the application's internal market-price representation. That provides one authoritative market-data flow for persistence, bet resolution, and realtime clients.
+
 Market products are configured once through Terraform's `market_products`, `default_market_product`, `coinbase_channels`, and `live_price_channel_prefix` variables. The consumer subscribes to every configured product, while the frontend market context owns the currently selected product. Changing that context value switches the history query, live AppSync channel, bet product, and chart label together; bets are resolved only by events for their stored product.
+
+Terraform owns the long-lived infrastructure. Price-consumer application releases have a separate lifecycle: the release script builds and pushes an immutable Git-SHA image, registers a new ECS task-definition revision, and updates the ECS service. Terraform intentionally does not own the currently selected application revision, so an unrelated infrastructure apply cannot roll the running consumer back.
 
 ## User accounts
 
-Amazon Cognito provides email/password registration, login, logout, and durable sessions. Registrations are automatically confirmed by a minimal pre-sign-up trigger, so this demo does not require an email confirmation-code step. The Cognito `sub` claim is the authoritative player ID; API Gateway verifies the JWT before protected player and bet routes run. DynamoDB stores the player's username and score. The frontend never creates or persists its own player identity.
+Amazon Cognito provides email/password registration, login, logout, and durable sessions. Registrations are automatically confirmed by a minimal pre-sign-up trigger, so this demo does not require an email confirmation-code step.
 
-The player record's optional `activeBetId` is the authoritative recovery pointer; the browser does not persist active-bet state. Each bet keeps the stable `(playerId, betId)` key from creation through resolution. The frontend waits until the bet's earliest resolution timestamp, then checks status and polls once per second only while the backend still reports it active. This avoids roughly 60 unnecessary requests during the first minute of every bet.
+The Cognito `sub` claim is the authoritative player ID. API Gateway verifies the JWT before protected player and bet routes run. DynamoDB stores the player's username and score. The frontend never creates or persists its own player identity.
 
-The authenticated `/history` page lists only completed bets whose retained market data can still reconstruct a chart, followed by a count of older hidden bets. The chart action loads five seconds before creation through five seconds after resolution from DynamoDB; the existing chart renders that static data with authoritative creation and resolution markers and does not attach the live-price subscription.
+The player record's optional `activeBetId` is the authoritative recovery pointer; the browser does not persist active-bet state. Each bet keeps the stable `(playerId, betId)` key from creation through resolution.
+
+The frontend waits until the bet's earliest resolution timestamp before checking its status, and polls once per second only while the backend still reports the bet as active. This avoids roughly 60 unnecessary requests during the first minute of every bet.
+
+The authenticated `/history` page lists completed bets whose retained market data can still reconstruct a chart, followed by a count of older hidden bets. The chart action loads five seconds before creation through five seconds after resolution from DynamoDB. The same reusable chart renders that static data with authoritative creation and resolution markers and does not attach the live-price subscription.
+
+The account menu supports logout and permanent account deletion.
 
 ## Repository
 
 ```text
-frontend/    React/Vite application
-backend/     Serverless backend
-terraform/   AWS infrastructure
-scripts/     Deployment scripts
+frontend/               React/Vite application
+backend/
+  bets/                 Lambda handler for create/get/list bet operations
+  create-player/        Player Lambda
+  get-prices/           Price-history Lambda
+  confirm-player-sign-up/
+  price-consumer/       Long-running ECS/Fargate application
+terraform/              AWS infrastructure
+scripts/                Bootstrap and deployment scripts
 ```
 
 ## Prerequisites
@@ -40,8 +94,53 @@ Install locally:
 - AWS CLI v2 with `aws login` support
 - Node.js
 - pnpm
+- Docker, for price-consumer releases
 
 ## Local development setup
+
+Install frontend dependencies:
+
+```powershell
+pnpm --dir frontend install
+```
+
+The frontend reads its runtime/build configuration through Vite environment variables. For local development, create `frontend/.env.local` with values for the deployed backend and AppSync resources:
+
+```env
+VITE_CREATE_PLAYER_URL=...
+VITE_BETS_URL=...
+VITE_GET_PRICES_URL=...
+VITE_COGNITO_USER_POOL_ID=...
+VITE_COGNITO_USER_POOL_CLIENT_ID=...
+VITE_MARKET_PRODUCTS=BTC-USD
+VITE_DEFAULT_MARKET_PRODUCT=BTC-USD
+VITE_APPSYNC_EVENTS_CHANNEL_PREFIX=...
+VITE_APPSYNC_EVENTS_ENDPOINT=...
+VITE_APPSYNC_API_KEY=...
+```
+
+The deployment script obtains these values from Terraform outputs automatically; the local file is only needed when running Vite directly.
+
+Start the frontend:
+
+```powershell
+pnpm --dir frontend dev
+```
+
+Run the production build or tests locally with:
+
+```powershell
+pnpm --dir frontend build
+pnpm --dir frontend test
+```
+
+The price consumer has its own package and can be built/tested independently:
+
+```powershell
+pnpm --dir backend/price-consumer install
+pnpm --dir backend/price-consumer build
+pnpm --dir backend/price-consumer test
+```
 
 ## AWS setup
 
@@ -123,11 +222,11 @@ aws login --profile btc-game-developer
 
 Complete the sign-in flow in the browser and select the profile for the current PowerShell session:
 
-```powershell
+```bash
 export AWS_PROFILE="btc-game-developer"
 ```
 
-or
+or in PowerShell:
 
 ```powershell
 $env:AWS_PROFILE = "btc-game-developer"
@@ -145,7 +244,7 @@ The returned ARN should identify the deployment user:
 arn:aws:iam::<account-id>:user/btc-game-developer
 ```
 
-Keep using this PowerShell session for the deployment commands below.
+Keep using this session for the deployment commands below.
 
 ## Deploy
 
@@ -178,7 +277,7 @@ From the repository root:
 node scripts/deploy-frontend.mjs
 ```
 
-The script builds the Vite application, reads the API and Amplify configuration from Terraform outputs, and deploys the frontend to Amplify.
+The script builds the Vite application, reads the API, Cognito, market, AppSync, and Amplify configuration from Terraform outputs, and deploys the resulting artifact to Amplify.
 
 If dependencies are already installed:
 
@@ -188,74 +287,76 @@ node scripts/deploy-frontend.mjs --skip-install
 
 ### Price consumer
 
-Terraform owns the ECS cluster, service shell, networking, IAM, logs, and ECR repository. Application releases own task definitions, the immutable revision selected by the service, and its operational desired count. Terraform intentionally ignores the latter two service attributes, so an infrastructure apply cannot roll back a release or stop the consumer.
+Terraform owns the ECS cluster, service shell, networking, IAM, logs, and ECR repository. Application releases own task definitions, the immutable revision selected by the service, and its operational desired count.
+
+Terraform intentionally ignores the latter two service attributes, so an infrastructure apply cannot roll back a release or stop the consumer.
 
 #### First deployment in a new environment
 
 The normal release script assumes that the ECS service already has a task definition. Bootstrap a new environment once:
 
 1. Apply the reviewed Terraform foundation for ECR, the ECS cluster, roles, networking, and logs.
-2. Build the consumer and push its first immutable Git-SHA image:
+2. Build the consumer and push its first immutable Git-SHA image.
 
-   **Linux:**
+**Linux:**
 
-   ```bash
-   repository=$(terraform -chdir=terraform output -raw price_consumer_ecr_repository_url)
-   sha=$(git rev-parse HEAD)
-   docker build --tag "btc-game-price-consumer:$sha" backend/price-consumer
-   aws ecr get-login-password | docker login --username AWS --password-stdin "${repository%%/*}"
-   docker tag "btc-game-price-consumer:$sha" "${repository}:$sha"
-   docker push "${repository}:$sha"
-   ```
+```bash
+repository=$(terraform -chdir=terraform output -raw price_consumer_ecr_repository_url)
+sha=$(git rev-parse HEAD)
+docker build --tag "btc-game-price-consumer:$sha" backend/price-consumer
+aws ecr get-login-password | docker login --username AWS --password-stdin "${repository%%/*}"
+docker tag "btc-game-price-consumer:$sha" "${repository}:$sha"
+docker push "${repository}:$sha"
+```
 
-   **Windows (PowerShell):**
+**Windows (PowerShell):**
 
-   ```powershell
-   $repository = terraform -chdir=terraform output -raw price_consumer_ecr_repository_url
-   $sha = git rev-parse HEAD
-   docker build --tag "btc-game-price-consumer:$sha" backend/price-consumer
-   aws ecr get-login-password | docker login --username AWS --password-stdin ($repository.Split('/')[0])
-   docker tag "btc-game-price-consumer:$sha" "${repository}:$sha"
-   docker push "${repository}:$sha"
-   ```
+```powershell
+$repository = terraform -chdir=terraform output -raw price_consumer_ecr_repository_url
+$sha = git rev-parse HEAD
+docker build --tag "btc-game-price-consumer:$sha" backend/price-consumer
+aws ecr get-login-password | docker login --username AWS --password-stdin ($repository.Split('/')[0])
+docker tag "btc-game-price-consumer:$sha" "${repository}:$sha"
+docker push "${repository}:$sha"
+```
 
-3. Create an initial ECS task-definition JSON using the Terraform-created execution role, task role, log group, and price-history table, then register it once:
+3. Create an initial ECS task-definition JSON using the Terraform-created execution role, task role, log group, and application configuration, then register it once.
 
-   **Linux:**
+**Linux:**
 
-   ```bash
-   task_definition_arn=$(
-     aws ecs register-task-definition \
-       --cli-input-json file://initial-price-consumer-task-definition.json \
-       --query taskDefinition.taskDefinitionArn \
-       --output text \
-       --no-cli-pager
-   )
-   ```
+```bash
+task_definition_arn=$(
+  aws ecs register-task-definition \
+    --cli-input-json file://initial-price-consumer-task-definition.json \
+    --query taskDefinition.taskDefinitionArn \
+    --output text \
+    --no-cli-pager
+)
+```
 
-   **Windows (PowerShell):**
+**Windows (PowerShell):**
 
-   ```powershell
-   $taskDefinitionArn = aws ecs register-task-definition `
-     --cli-input-json file://initial-price-consumer-task-definition.json `
-     --query taskDefinition.taskDefinitionArn `
-     --output text `
-     --no-cli-pager
-   ```
+```powershell
+$taskDefinitionArn = aws ecs register-task-definition `
+  --cli-input-json file://initial-price-consumer-task-definition.json `
+  --query taskDefinition.taskDefinitionArn `
+  --output text `
+  --no-cli-pager
+```
 
-4. Create the Terraform-owned ECS service using that one-time ARN:
+4. Create the Terraform-owned ECS service using that one-time ARN.
 
-   **Linux:**
+**Linux:**
 
-   ```bash
-   terraform -chdir=terraform apply -var="price_consumer_initial_task_definition_arn=${task_definition_arn}"
-   ```
+```bash
+terraform -chdir=terraform apply -var="price_consumer_initial_task_definition_arn=${task_definition_arn}"
+```
 
-   **Windows (PowerShell):**
+**Windows (PowerShell):**
 
-   ```powershell
-   terraform -chdir=terraform apply -var "price_consumer_initial_task_definition_arn=$taskDefinitionArn"
-   ```
+```powershell
+terraform -chdir=terraform apply -var "price_consumer_initial_task_definition_arn=$taskDefinitionArn"
+```
 
 After the service exists, omit the initial ARN variable. Normal Terraform plans ignore release-selected task-definition and desired-count changes.
 
@@ -267,17 +368,21 @@ Commit application changes and prepare an immutable Git-SHA release from the rep
 node scripts/deploy-price-consumer.mjs
 ```
 
-This builds the container locally without changing infrastructure. Review the release, then explicitly deploy it:
+This builds the container locally without changing infrastructure. Review the release metadata, then explicitly deploy it:
 
 ```powershell
 node scripts/deploy-price-consumer.mjs --apply
 ```
 
-The apply mode authenticates Docker using the current AWS CLI identity, pushes the immutable image, reads the service's current task definition, replaces only the consumer image, and registers the resulting revision. It updates the ECS service to that revision with desired count one and reports success when the new PRIMARY task is running with nothing pending. Older zero-task deployments do not delay completion. It does not run Terraform. No credentials are stored in the image or script.
+The apply mode authenticates Docker using the current AWS CLI identity, pushes the immutable image, reads the service's current task definition, updates the consumer image and runtime configuration, and registers the resulting revision.
+
+It then updates the ECS service to that revision with desired count one and reports success when the new PRIMARY task is running with nothing pending. Older zero-task deployments do not delay completion. It does not run Terraform, and no credentials are stored in the image or script.
 
 ## Updating the application
 
-For infrastructure or backend changes, review and apply a new Terraform plan:
+Infrastructure and application releases intentionally have different lifecycles.
+
+For infrastructure or Lambda/backend changes currently managed by Terraform, review and apply a new plan:
 
 ```powershell
 cd terraform
@@ -293,6 +398,8 @@ node scripts/deploy-frontend.mjs --skip-install
 
 For price-consumer changes, commit the changes and repeat the two-step price-consumer deployment above.
 
+A natural production evolution would be to move the application-release steps into CI/CD while keeping Terraform responsible for long-lived infrastructure.
+
 ### Verify the deployment
 
 Get the public frontend URL:
@@ -304,7 +411,7 @@ terraform output frontend_url
 
 Open the returned URL in a browser.
 
-Create an account with an email, password, and username. The player is signed in immediately. Refreshing or reopening the browser restores the Cognito session. The account controls allow changing the username, logging out, and permanently deleting the account data.
+Create an account with an email, password, and username. The player is signed in immediately. Refreshing or reopening the browser restores the Cognito session. The account menu supports logout and permanent account deletion.
 
 Verify the price consumer after deployment:
 
@@ -321,7 +428,7 @@ The ECS service should report one running task, logs should contain `coinbase_co
 Run the backend Lambda characterization tests from the repository root:
 
 ```powershell
-node --test backend/create-bet/*.test.mjs backend/create-player/*.test.mjs backend/get-prices/*.test.mjs backend/confirm-player-sign-up/*.test.mjs
+node --test backend/bets/*.test.mjs backend/create-player/*.test.mjs backend/get-prices/*.test.mjs backend/confirm-player-sign-up/*.test.mjs
 ```
 
 Run the frontend and price-consumer suites independently:

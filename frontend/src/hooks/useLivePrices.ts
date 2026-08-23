@@ -1,13 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
-import { getRecentPrices } from "@/api/prices";
-
-import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-
-import { subscribeToLivePrices } from "@/api/livePrices";
-import type { MarketPrice } from "@/api/prices";
+import { useEffect } from "react";
 import { useMarket } from "@/context/useMarket";
-import { queryKeys } from "./queryKeys";
+import { subscribeToLivePrices } from "@/api/livePrices";
+import { queryKeys } from "@/queryKeys";
+import { type MarketPrice } from "@/api/prices";
 
 // Sacrificed efficiency for the readability/correctness. 3 minute window should work fine.
 export function appendRecentPrice(
@@ -29,14 +25,6 @@ export function appendRecentPrice(
     (left, right) =>
       Date.parse(left.eventTimestamp) - Date.parse(right.eventTimestamp),
   );
-}
-
-export function useRecentPrices() {
-  const { product } = useMarket();
-  return useQuery({
-    queryKey: queryKeys.recentPrices(product),
-    queryFn: ({ signal }) => getRecentPrices({ product, signal }),
-  });
 }
 
 export function useLivePrices() {

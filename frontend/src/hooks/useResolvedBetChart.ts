@@ -5,7 +5,7 @@ import {
   type ResolvedBet,
 } from "@/api/bets";
 import { getRecentPrices } from "@/api/prices";
-import { queryKeys } from "./queryKeys";
+import { queryKeys } from "@/queryKeys";
 
 export function useResolvedBetChart(bet: ResolvedBet | null) {
   return useQuery({
