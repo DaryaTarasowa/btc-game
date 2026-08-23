@@ -124,13 +124,3 @@ output "price_history_table_name" {
   description = "DynamoDB table containing retained market price history."
   value       = aws_dynamodb_table.price_history.name
 }
-
-output "price_consumer_execution_role_arn" {
-  description = "ECS execution role ARN for the price consumer."
-  value       = aws_iam_role.price_consumer_execution.arn
-}
-
-output "price_consumer_task_role_arn" {
-  description = "Runtime ECS task role ARN for the price consumer."
-  value       = aws_iam_role.price_consumer_task.arn
-}

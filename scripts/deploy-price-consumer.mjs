@@ -89,6 +89,7 @@ function applyRelease() {
   const liveEndpoint = terraformOutput("live_price_event_http_endpoint");
   const betsTable = terraformOutput("bets_table_name");
   const playersTable = terraformOutput("players_table_name");
+  const priceHistoryTable = terraformOutput("price_history_table_name");
   const marketProducts = terraformOutput("market_products");
   const coinbaseChannels = terraformOutput("coinbase_channels");
   const livePriceChannelPrefix = terraformOutput(
@@ -240,6 +241,7 @@ function registrationForRelease(
           ["APPSYNC_REGION", appSyncRegion],
           ["BETS_TABLE", betsTable],
           ["PLAYERS_TABLE", playersTable],
+          ["PRICE_HISTORY_TABLE", priceHistoryTable],
           ["MARKET_PRODUCTS", marketProducts],
           ["COINBASE_CHANNELS", coinbaseChannels],
           ["APPSYNC_EVENTS_CHANNEL_PREFIX", livePriceChannelPrefix],
