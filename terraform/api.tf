@@ -111,10 +111,10 @@ resource "aws_lambda_permission" "api_get_prices" {
   source_arn    = "${aws_apigatewayv2_api.player.execution_arn}/*/GET/prices"
 }
 
-resource "aws_apigatewayv2_integration" "create_bet" {
+resource "aws_apigatewayv2_integration" "bets" {
   api_id                 = aws_apigatewayv2_api.player.id
   integration_type       = "AWS_PROXY"
-  integration_uri        = aws_lambda_function.create_bet.invoke_arn
+  integration_uri        = aws_lambda_function.bets.invoke_arn
   payload_format_version = "2.0"
   timeout_milliseconds   = 3000
 }
@@ -122,7 +122,7 @@ resource "aws_apigatewayv2_integration" "create_bet" {
 resource "aws_apigatewayv2_route" "create_bet" {
   api_id             = aws_apigatewayv2_api.player.id
   route_key          = "POST /bets"
-  target             = "integrations/${aws_apigatewayv2_integration.create_bet.id}"
+  target             = "integrations/${aws_apigatewayv2_integration.bets.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
@@ -130,7 +130,7 @@ resource "aws_apigatewayv2_route" "create_bet" {
 resource "aws_apigatewayv2_route" "get_bet" {
   api_id             = aws_apigatewayv2_api.player.id
   route_key          = "GET /bets/{betId}"
-  target             = "integrations/${aws_apigatewayv2_integration.create_bet.id}"
+  target             = "integrations/${aws_apigatewayv2_integration.bets.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
@@ -138,7 +138,7 @@ resource "aws_apigatewayv2_route" "get_bet" {
 resource "aws_apigatewayv2_route" "list_bets" {
   api_id             = aws_apigatewayv2_api.player.id
   route_key          = "GET /bets"
-  target             = "integrations/${aws_apigatewayv2_integration.create_bet.id}"
+  target             = "integrations/${aws_apigatewayv2_integration.bets.id}"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
@@ -146,7 +146,7 @@ resource "aws_apigatewayv2_route" "list_bets" {
 resource "aws_lambda_permission" "api_list_bets" {
   statement_id  = "AllowPlayerApiInvokeListBets"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.create_bet.function_name
+  function_name = aws_lambda_function.bets.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.player.execution_arn}/*/GET/bets"
 }
@@ -154,7 +154,7 @@ resource "aws_lambda_permission" "api_list_bets" {
 resource "aws_lambda_permission" "api_get_bet" {
   statement_id  = "AllowPlayerApiInvokeGetBet"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.create_bet.function_name
+  function_name = aws_lambda_function.bets.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.player.execution_arn}/*/GET/bets/*"
 }
@@ -162,7 +162,7 @@ resource "aws_lambda_permission" "api_get_bet" {
 resource "aws_lambda_permission" "api_create_bet" {
   statement_id  = "AllowPlayerApiInvokeCreateBet"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.create_bet.function_name
+  function_name = aws_lambda_function.bets.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.player.execution_arn}/*/POST/bets"
 }

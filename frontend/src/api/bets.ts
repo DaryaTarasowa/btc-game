@@ -47,6 +47,9 @@ export async function createBet({
   direction,
   point,
 }: CreateBetInput): Promise<ActiveBet> {
+  console.log(import.meta.env.VITE_BETS_URL);
+  console.log(import.meta.env);
+
   const endpoint = import.meta.env.VITE_BETS_URL;
   if (!endpoint) throw new Error("The bet endpoint is not configured.");
 

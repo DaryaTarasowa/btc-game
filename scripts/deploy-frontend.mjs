@@ -40,9 +40,9 @@ try {
     [`-chdir=${terraformDirectory}`, "output", "-raw", "create_player_url"],
     { captureOutput: true },
   ).trim();
-  const createBetUrl = run(
+  const betsUrl = run(
     "terraform",
-    [`-chdir=${terraformDirectory}`, "output", "-raw", "create_bet_url"],
+    [`-chdir=${terraformDirectory}`, "output", "-raw", "bets_url"],
     { captureOutput: true },
   ).trim();
   const priceHistoryUrl = run(
@@ -120,7 +120,7 @@ try {
     env: {
       ...process.env,
       VITE_CREATE_PLAYER_URL: createPlayerUrl,
-      VITE_BETS_URL: createBetUrl,
+      VITE_BETS_URL: betsUrl,
       VITE_GET_PRICES_URL: priceHistoryUrl,
       VITE_COGNITO_USER_POOL_ID: userPoolId,
       VITE_COGNITO_USER_POOL_CLIENT_ID: userPoolClientId,

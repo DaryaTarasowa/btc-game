@@ -118,17 +118,17 @@ resource "aws_iam_role_policy" "get_prices_runtime" {
   })
 }
 
-resource "aws_iam_role" "create_bet" {
-  name                 = "btc-game-create-bet"
-  description          = "Runtime role for the BTC game bet-creation Lambda."
+resource "aws_iam_role" "bets" {
+  name                 = "btc-game-bets"
+  description          = "Runtime role for the BTC game bet-managing Lambda."
   assume_role_policy   = local.lambda_trust_policy
   max_session_duration = 3600
   permissions_boundary = local.runtime_permissions_boundary_arn
 }
 
-resource "aws_iam_role_policy" "create_bet_runtime" {
-  name = "btc-game-create-bet-runtime"
-  role = aws_iam_role.create_bet.name
+resource "aws_iam_role_policy" "bets_runtime" {
+  name = "btc-game-bets-runtime"
+  role = aws_iam_role.bets.name
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -140,7 +140,7 @@ resource "aws_iam_role_policy" "create_bet_runtime" {
           "logs:CreateLogStream",
           "logs:PutLogEvents"
         ]
-        Resource = "arn:aws:logs:${var.aws_region}:*:log-group:/aws/lambda/btc-game-create-bet:*"
+        Resource = "arn:aws:logs:${var.aws_region}:*:log-group:/aws/lambda/btc-game-bets:*"
       },
       {
         Effect   = "Allow"

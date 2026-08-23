@@ -80,15 +80,15 @@ resource "aws_lambda_function" "get_prices" {
   }
 }
 
-data "archive_file" "create_bet" {
+data "archive_file" "bets" {
   type        = "zip"
-  source_dir  = "${path.module}/../backend/create-bet"
-  output_path = "${path.module}/createBet.zip"
+  source_dir  = "${path.module}/../backend/bets"
+  output_path = "${path.module}/bets.zip"
 }
 
-resource "aws_lambda_function" "create_bet" {
-  function_name = "btc-game-create-bet"
-  role          = aws_iam_role.create_bet.arn
+resource "aws_lambda_function" "bets" {
+  function_name = "btc-game-bets"
+  role          = aws_iam_role.bets.arn
   runtime       = "nodejs24.x"
   handler       = "index.handler"
   architectures = ["x86_64"]
@@ -96,8 +96,8 @@ resource "aws_lambda_function" "create_bet" {
   timeout       = 3
   package_type  = "Zip"
 
-  filename         = data.archive_file.create_bet.output_path
-  source_code_hash = data.archive_file.create_bet.output_base64sha256
+  filename         = data.archive_file.bets.output_path
+  source_code_hash = data.archive_file.bets.output_base64sha256
 
   environment {
     variables = {

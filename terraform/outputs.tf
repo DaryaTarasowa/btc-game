@@ -27,8 +27,8 @@ output "price_history_url" {
   value       = "${aws_apigatewayv2_stage.default.invoke_url}prices"
 }
 
-output "create_bet_url" {
-  description = "Frontend endpoint that creates a bet from an exact visible market point."
+output "bets_url" {
+  description = "Frontend endpoint that manages bets."
   value       = "${aws_apigatewayv2_stage.default.invoke_url}bets"
 }
 
