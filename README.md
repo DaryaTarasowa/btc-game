@@ -1,6 +1,7 @@
 # BTC game
 
 A real-time BTC price prediction game built with React and an event-driven AWS backend.
+Demo: https://main.d9m9k5pr9h7zi.amplifyapp.com/
 
 ## Contents
 
