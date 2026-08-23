@@ -204,6 +204,7 @@ function registrationForRelease(
   marketProducts,
   coinbaseChannels,
   livePriceChannelPrefix,
+  appSyncRegion,
 ) {
   const {
     taskDefinitionArn: _arn,
