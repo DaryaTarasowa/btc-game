@@ -19,6 +19,7 @@ export function ResolvedBetModal({
   return (
     <Modal
       className={`max-w-[980px] border-accent/50`}
+      contained={false}
       origin={origin}
       onClose={onClose}
       eyebrow="BET RESOLVED"

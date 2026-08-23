@@ -6,6 +6,7 @@ interface ConfirmationModalProps {
   eyebrow: ModalProps["eyebrow"];
   title: ModalProps["title"];
   description: ModalProps["description"];
+  contained: ModalProps["contained"];
   cancelLabel: string;
   confirmLabel: string;
   pendingLabel?: React.ReactNode;
@@ -25,6 +26,7 @@ export function ConfirmationModal({
   pendingLabel,
   tone = "default",
   pending = false,
+  contained = false,
   error,
   onCancel,
   onConfirm,
@@ -43,6 +45,7 @@ export function ConfirmationModal({
       eyebrow={eyebrow}
       title={title}
       description={description}
+      contained={contained}
     >
       {error && <p className="mt-4 text-danger">{error}</p>}
 

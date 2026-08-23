@@ -10,6 +10,7 @@ export function InfoModal({ onClose }: InfoModalProps) {
       className="w-[min(120%,420px)]"
       onClose={onClose}
       eyebrow="How to play"
+      contained={true}
     >
       <div className={`text-white`}>
         <p>Choose whether you think the price will go UP or DOWN.</p>

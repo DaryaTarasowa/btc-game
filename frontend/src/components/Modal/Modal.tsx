@@ -31,7 +31,7 @@ export function Modal({
   role = "dialog",
   origin = { x: 0, y: 0 },
   closeDisabled = false,
-  contained = true,
+  contained = false,
   onClose,
 }: ModalProps) {
   useEffect(() => {

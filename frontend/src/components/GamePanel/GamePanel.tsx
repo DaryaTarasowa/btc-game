@@ -39,6 +39,8 @@ export function GamePanel() {
   }, [score]);
 
   const [infoModalOpen, setInfoModalOpen] = useState(false);
+  const showGameControls =
+    latestVisiblePoint && !isRecovering && !isCreating && !Boolean(activeBet);
 
   return (
     <>
@@ -99,15 +101,8 @@ export function GamePanel() {
         </div>
       )}
 
-      <GameControls
-        disabled={
-          !latestVisiblePoint ||
-          isRecovering ||
-          isCreating ||
-          Boolean(activeBet)
-        }
-        onChoose={onChoose}
-      />
+      {showGameControls && <GameControls onChoose={onChoose} />}
+
       {creationError && <p className="mt-5.5 text-danger">{creationError}</p>}
 
       {infoModalOpen && <InfoModal onClose={() => setInfoModalOpen(false)} />}
