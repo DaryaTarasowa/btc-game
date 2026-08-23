@@ -208,6 +208,7 @@ function registrationForRelease(
   liveEndpoint,
   betsTable,
   playersTable,
+  priceHistoryTable,
   marketProducts,
   coinbaseChannels,
   livePriceChannelPrefix,
