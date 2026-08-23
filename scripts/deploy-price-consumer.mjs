@@ -148,17 +148,17 @@ function applyRelease() {
     ),
   );
 
-  const registration = registrationForRelease(
-    described,
-    remoteImage,
+  const registration = registrationForRelease(described, {
+    coinbaseChannels,
+    image: remoteImage,
     liveEndpoint,
     betsTable,
     playersTable,
+    priceHistoryTable,
     marketProducts,
-    coinbaseChannels,
     livePriceChannelPrefix,
     appSyncRegion,
-  );
+  });
 
   const taskDefinition = run(
     "aws",
@@ -204,15 +204,17 @@ function applyRelease() {
 
 function registrationForRelease(
   taskDefinition,
-  image,
-  liveEndpoint,
-  betsTable,
-  playersTable,
-  priceHistoryTable,
-  marketProducts,
-  coinbaseChannels,
-  livePriceChannelPrefix,
-  appSyncRegion,
+  {
+    image,
+    liveEndpoint,
+    betsTable,
+    playersTable,
+    priceHistoryTable,
+    marketProducts,
+    coinbaseChannels,
+    livePriceChannelPrefix,
+    appSyncRegion,
+  },
 ) {
   const {
     taskDefinitionArn: _arn,
@@ -228,6 +230,23 @@ function registrationForRelease(
 
   let replaced = false;
 
+  const environmentValues = {
+    APPSYNC_EVENTS_ENDPOINT: liveEndpoint,
+    APPSYNC_REGION: appSyncRegion,
+    BETS_TABLE: betsTable,
+    PLAYERS_TABLE: playersTable,
+    PRICE_HISTORY_TABLE: priceHistoryTable,
+    MARKET_PRODUCTS: marketProducts,
+    COINBASE_CHANNELS: coinbaseChannels,
+    APPSYNC_EVENTS_CHANNEL_PREFIX: livePriceChannelPrefix,
+  };
+
+  for (const [name, value] of Object.entries(environmentValues)) {
+    if (!value) {
+      throw new Error(`Missing required price-consumer environment: ${name}`);
+    }
+  }
+
   registration.containerDefinitions = registration.containerDefinitions.map(
     (container) => {
       if (container.name !== "price-consumer") return container;
@@ -237,16 +256,7 @@ function registrationForRelease(
       return {
         ...container,
         image,
-        environment: [
-          ["APPSYNC_EVENTS_ENDPOINT", liveEndpoint],
-          ["APPSYNC_REGION", appSyncRegion],
-          ["BETS_TABLE", betsTable],
-          ["PLAYERS_TABLE", playersTable],
-          ["PRICE_HISTORY_TABLE", priceHistoryTable],
-          ["MARKET_PRODUCTS", marketProducts],
-          ["COINBASE_CHANNELS", coinbaseChannels],
-          ["APPSYNC_EVENTS_CHANNEL_PREFIX", livePriceChannelPrefix],
-        ].reduce(
+        environment: Object.entries(environmentValues).reduce(
           (environment, [name, value]) =>
             setEnvironmentVariable(environment, name, value),
           container.environment,
