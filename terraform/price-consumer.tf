@@ -178,21 +178,80 @@ resource "aws_iam_role_policy" "price_consumer_task" {
   })
 }
 
-# Task-definition revisions are release-owned. Forget the legacy Terraform
-# state entry without deregistering the existing ECS revision.
-removed {
-  from = aws_ecs_task_definition.price_consumer
+resource "aws_ecs_task_definition" "price_consumer_bootstrap" {
+  family                   = "${local.price_consumer_name}-bootstrap"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = 256
+  memory                   = 512
+  execution_role_arn       = aws_iam_role.price_consumer_execution.arn
+  task_role_arn            = aws_iam_role.price_consumer_task.arn
 
-  lifecycle {
-    destroy = false
+  runtime_platform {
+    operating_system_family = "LINUX"
+    cpu_architecture        = "X86_64"
   }
+
+  container_definitions = jsonencode([
+    {
+      name        = "price-consumer"
+      image       = "${aws_ecr_repository.price_consumer.repository_url}:bootstrap"
+      essential   = true
+      stopTimeout = 30
+
+      environment = [
+        {
+          name  = "PRICE_HISTORY_TABLE"
+          value = aws_dynamodb_table.price_history.name
+        },
+        {
+          name  = "APPSYNC_EVENTS_ENDPOINT"
+          value = "https://${aws_appsync_api.live_prices.dns["HTTP"]}/event"
+        },
+        {
+          name  = "APPSYNC_REGION"
+          value = var.aws_region
+        },
+        {
+          name  = "BETS_TABLE"
+          value = aws_dynamodb_table.bets.name
+        },
+        {
+          name  = "PLAYERS_TABLE"
+          value = aws_dynamodb_table.players.name
+        },
+        {
+          name  = "MARKET_PRODUCTS"
+          value = join(",", var.market_products)
+        },
+        {
+          name  = "COINBASE_CHANNELS"
+          value = join(",", var.coinbase_channels)
+        },
+        {
+          name  = "APPSYNC_EVENTS_CHANNEL_PREFIX"
+          value = var.live_price_channel_prefix
+        }
+      ]
+
+      logConfiguration = {
+        logDriver = "awslogs"
+
+        options = {
+          awslogs-group         = aws_cloudwatch_log_group.price_consumer.name
+          awslogs-region        = var.aws_region
+          awslogs-stream-prefix = "price-consumer"
+        }
+      }
+    }
+  ])
 }
 
 resource "aws_ecs_service" "price_consumer" {
   name            = local.price_consumer_name
   cluster         = aws_ecs_cluster.application.id
-  task_definition = var.price_consumer_initial_task_definition_arn
-  desired_count   = 1
+  task_definition = aws_ecs_task_definition.price_consumer_bootstrap.arn
+  desired_count   = 0
   launch_type     = "FARGATE"
 
   deployment_circuit_breaker {
@@ -206,8 +265,6 @@ resource "aws_ecs_service" "price_consumer" {
     assign_public_ip = true
   }
 
-  # Application releases select an immutable task-definition revision and set
-  # the operational count. Infrastructure applies must not roll either back.
   lifecycle {
     ignore_changes = [
       desired_count,

@@ -110,6 +110,11 @@ try {
     ],
     { captureOutput: true },
   ).trim();
+  const awsRegion = run(
+    "terraform",
+    [`-chdir=${terraformDirectory}`, "output", "-raw", "aws_region"],
+    { captureOutput: true },
+  ).trim();
 
   if (!skipInstall) {
     run("pnpm", ["install", "--frozen-lockfile"], { cwd: frontendDirectory });
@@ -129,6 +134,7 @@ try {
       VITE_APPSYNC_EVENTS_CHANNEL_PREFIX: livePriceChannelPrefix,
       VITE_APPSYNC_EVENTS_ENDPOINT: livePriceEndpoint,
       VITE_APPSYNC_API_KEY: livePriceApiKey,
+      VITE_AWS_REGION: awsRegion,
     },
   });
 

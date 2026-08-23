@@ -1,11 +1,11 @@
 /**
- * Prepares and deploys normal price-consumer releases.
+ * Prepares and deploys price-consumer releases.
  *
- * Terraform owns the long-lived ECS/ECR infrastructure. This script assumes
- * the ECS service already exists with a current task definition. It builds and
- * pushes an immutable Git-SHA image, clones the current task definition with
- * only the consumer image changed, registers the next revision, and rolls the
- * service to that revision. First-environment setup is documented in README.md.
+ * Terraform owns the long-lived ECS/ECR infrastructure and creates the
+ * initial bootstrap task definition and ECS service. Application releases
+ * are owned by this script: it builds and pushes an immutable Git-SHA image,
+ * clones the service's current task definition, registers a new revision,
+ * and rolls the ECS service to that revision.
  *
  * Prepare: node scripts/deploy-price-consumer.mjs
  * Deploy:  node scripts/deploy-price-consumer.mjs --apply
@@ -37,6 +37,7 @@ function prepareRelease() {
   const imageTag = run("git", ["rev-parse", "HEAD"], {
     capture: true,
   }).trim();
+
   if (!/^[0-9a-f]{40}$/.test(imageTag)) {
     throw new Error(
       "Could not determine a full Git commit SHA for the image tag.",
@@ -45,6 +46,7 @@ function prepareRelease() {
 
   const repositoryUrl = terraformOutput("price_consumer_ecr_repository_url");
   const localImage = `btc-game-price-consumer:${imageTag}`;
+
   console.log(`Building ${localImage}...`);
   run("docker", ["build", "--tag", localImage, consumerDirectory]);
 
@@ -53,6 +55,7 @@ function prepareRelease() {
     `${JSON.stringify({ imageTag, repositoryUrl }, null, 2)}\n`,
     "utf8",
   );
+
   console.log(`Saved release metadata to ${releasePath}`);
   console.log(
     "Review it, then run: node scripts/deploy-price-consumer.mjs --apply",
@@ -67,6 +70,7 @@ function applyRelease() {
   }
 
   const release = JSON.parse(readFileSync(releasePath, "utf8"));
+
   if (
     typeof release.imageTag !== "string" ||
     !/^[0-9a-f]{40}$/.test(release.imageTag) ||
@@ -79,6 +83,7 @@ function applyRelease() {
   const localImage = `btc-game-price-consumer:${release.imageTag}`;
   const remoteImage = `${release.repositoryUrl}:${release.imageTag}`;
   const registry = release.repositoryUrl.split("/")[0];
+
   const cluster = terraformOutput("price_consumer_ecs_cluster_name");
   const service = terraformOutput("price_consumer_ecs_service_name");
   const liveEndpoint = terraformOutput("live_price_event_http_endpoint");
@@ -91,10 +96,14 @@ function applyRelease() {
   );
   const appSyncRegion = terraformOutput("aws_region");
 
-  const password = run("aws", ["ecr", "get-login-password"], { capture: true });
+  const password = run("aws", ["ecr", "get-login-password"], {
+    capture: true,
+  });
+
   run("docker", ["login", "--username", "AWS", "--password-stdin", registry], {
     input: password,
   });
+
   run("docker", ["tag", localImage, remoteImage]);
   run("docker", ["push", remoteImage]);
 
@@ -115,6 +124,7 @@ function applyRelease() {
     ],
     { capture: true },
   ).trim();
+
   if (!currentTaskDefinition || currentTaskDefinition === "None") {
     throw new Error(`ECS service ${service} has no current task definition.`);
   }
@@ -136,6 +146,7 @@ function applyRelease() {
       { capture: true },
     ),
   );
+
   const registration = registrationForRelease(
     described,
     remoteImage,
@@ -147,6 +158,7 @@ function applyRelease() {
     livePriceChannelPrefix,
     appSyncRegion,
   );
+
   const taskDefinition = run(
     "aws",
     [
@@ -164,6 +176,7 @@ function applyRelease() {
   ).trim();
 
   console.log(`Updating ${service}...`);
+
   run(
     "aws",
     [
@@ -184,15 +197,8 @@ function applyRelease() {
 
   console.log(`Waiting for ${service} deployment to be running...`);
   waitUntilRunning(cluster, service, taskDefinition);
+
   console.log(`Deployed price-consumer image ${remoteImage}.`);
-}
-
-function setEnvironmentVariable(environment = [], name, value) {
-  const withoutExisting = environment.filter(
-    (variable) => variable.name !== name,
-  );
-
-  return [...withoutExisting, { name, value }];
 }
 
 function registrationForRelease(
@@ -219,10 +225,13 @@ function registrationForRelease(
   } = taskDefinition;
 
   let replaced = false;
+
   registration.containerDefinitions = registration.containerDefinitions.map(
     (container) => {
       if (container.name !== "price-consumer") return container;
+
       replaced = true;
+
       return {
         ...container,
         image,
@@ -242,18 +251,28 @@ function registrationForRelease(
       };
     },
   );
+
   if (!replaced) {
     throw new Error(
       'Current task definition has no "price-consumer" container.',
     );
   }
+
   return registration;
+}
+
+function setEnvironmentVariable(environment = [], name, value) {
+  return [
+    ...environment.filter((variable) => variable.name !== name),
+    { name, value },
+  ];
 }
 
 // The generic services-stable waiter can be delayed by old zero-task
 // deployments, so check only the service and its new PRIMARY deployment.
 function waitUntilRunning(cluster, service, taskDefinition) {
   const deadline = Date.now() + 5 * 60 * 1000;
+
   while (Date.now() < deadline) {
     const status = JSON.parse(
       run(
@@ -274,7 +293,9 @@ function waitUntilRunning(cluster, service, taskDefinition) {
         { capture: true },
       ),
     );
+
     const primary = status?.primary;
+
     if (
       status?.desired === 1 &&
       status.running === 1 &&
@@ -286,9 +307,11 @@ function waitUntilRunning(cluster, service, taskDefinition) {
     ) {
       return;
     }
+
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5_000);
   }
-  throw new Error(`ECS deployment did not start within 5 minutes.`);
+
+  throw new Error("ECS deployment did not start within 5 minutes.");
 }
 
 function terraformOutput(name) {
@@ -302,7 +325,8 @@ function terraformOutput(name) {
 function shouldApply(arguments_) {
   if (arguments_.length === 0) return false;
   if (arguments_.length === 1 && arguments_[0] === "--apply") return true;
-  throw new Error(`Usage: node scripts/deploy-price-consumer.mjs [--apply]`);
+
+  throw new Error("Usage: node scripts/deploy-price-consumer.mjs [--apply]");
 }
 
 function run(command, arguments_, options = {}) {
@@ -318,12 +342,16 @@ function run(command, arguments_, options = {}) {
           ? "inherit"
           : ["pipe", "inherit", "inherit"],
   });
-  if (result.error)
+
+  if (result.error) {
     throw new Error(`Could not run ${command}: ${result.error.message}`);
+  }
+
   if (result.status !== 0) {
     throw new Error(
       `${command} failed with exit code ${result.status ?? "unknown"}.`,
     );
   }
+
   return result.stdout ?? "";
 }

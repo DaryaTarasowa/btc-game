@@ -6,7 +6,7 @@ export const queryKeys = {
   betHistory: (playerId: string) => ["bets", playerId, "history"] as const,
 
   bet: (playerId: string, betId: string) =>
-    ["bets", "id", playerId, betId] as const,
+    ["bets", playerId, "id", betId] as const,
 
   recentPrices: (product: string) => ["prices", product, "recent"] as const,
 
