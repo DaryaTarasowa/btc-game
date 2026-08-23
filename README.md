@@ -189,7 +189,7 @@ terraform/bootstrap/btc-game-developer-policy.template.json
 While authenticated as an **AWS administrator**, run from the repository root:
 
 ```powershell
-node scripts/bootstrap-aws.mjs --iam-user <btc-game-developer> --region eu-central-1
+node scripts/bootstrap-aws.mjs --iam-user btc-game-developer --region eu-central-1
 ```
 
 The script verifies the active administrator identity, renders templates for the selected account and region, and creates or safely updates the `btc-game-runtime-boundary` and `btc-game-developer` customer-managed policies. It attaches only the deployment policy to the specified IAM user.

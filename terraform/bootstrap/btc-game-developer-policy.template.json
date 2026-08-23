@@ -101,10 +101,7 @@
     },
     {
       "Effect": "Deny",
-      "Action": [
-        "iam:CreateRole",
-        "iam:PutRolePermissionsBoundary"
-      ],
+      "Action": ["iam:CreateRole", "iam:PutRolePermissionsBoundary"],
       "Resource": "arn:${AWS_PARTITION}:iam::${AWS_ACCOUNT_ID}:role/btc-game-*",
       "Condition": {
         "ArnNotEquals": {
@@ -228,15 +225,17 @@
     {
       "Effect": "Allow",
       "Action": "ec2:CreateSecurityGroup",
-      "Resource": [
-        "arn:${AWS_PARTITION}:ec2:${AWS_REGION}:${AWS_ACCOUNT_ID}:security-group/*",
-        "arn:${AWS_PARTITION}:ec2:${AWS_REGION}:${AWS_ACCOUNT_ID}:vpc/*"
-      ],
+      "Resource": "arn:${AWS_PARTITION}:ec2:${AWS_REGION}:${AWS_ACCOUNT_ID}:security-group/*",
       "Condition": {
         "StringEquals": {
           "aws:RequestTag/Application": "btc-game"
         }
       }
+    },
+    {
+      "Effect": "Allow",
+      "Action": "ec2:CreateSecurityGroup",
+      "Resource": "arn:${AWS_PARTITION}:ec2:${AWS_REGION}:${AWS_ACCOUNT_ID}:vpc/*"
     },
     {
       "Effect": "Allow",
