@@ -7,9 +7,10 @@ import { GameSessionProvider } from "@/context/GameSessionContext";
 import { useGameSession } from "@/context/useGameSession";
 import { usePlayer } from "@/context/usePlayer";
 import { panelStyle, pageStyle } from "@/styles/ui";
+import { LoadingSpinner } from "./LoadingSpinner/LoadingSpinner";
 
 function GameWorkspace() {
-  const { playerId } = usePlayer();
+  const { playerId, isLoading } = usePlayer();
   const session = useGameSession();
   const contentPanelRef = useRef<HTMLDivElement>(null);
 
@@ -38,7 +39,15 @@ function GameWorkspace() {
       className={`${pageStyle} grid grid-cols-[minmax(260px,0.72fr)_minmax(0,1.8fr)] items-start gap-6 max-[820px]:grid-cols-1`}
     >
       <section className={`${panelStyle} max-[820px]:text-left`}>
-        {playerId ? <GamePanel /> : <AuthForm />}
+        {isLoading ? (
+          <div className="grid min-h-48 place-items-center">
+            <LoadingSpinner color="var(--color-accent)" />
+          </div>
+        ) : playerId ? (
+          <GamePanel />
+        ) : (
+          <AuthForm />
+        )}
       </section>
 
       <div className="min-w-0" ref={contentPanelRef}>

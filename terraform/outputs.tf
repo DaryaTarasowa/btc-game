@@ -1,3 +1,7 @@
+output "aws_region" {
+  value = var.aws_region
+}
+
 output "player_api_url" {
   description = "Base URL for the player HTTP API."
   value       = aws_apigatewayv2_stage.default.invoke_url

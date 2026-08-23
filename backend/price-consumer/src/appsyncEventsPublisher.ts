@@ -5,7 +5,16 @@ import { SignatureV4 } from "@smithy/signature-v4";
 import type { LiveMarketPrice, PricePublisher } from "./types.js";
 
 const SERVICE = "appsync";
-const REGION = "eu-central-1";
+
+function getRegion() {
+  const region = process.env.APPSYNC_REGION;
+
+  if (!region) {
+    throw new Error("APPSYNC_REGION is not configured.");
+  }
+
+  return region;
+}
 
 type RequestSigner = Pick<SignatureV4, "sign">;
 type Fetcher = typeof fetch;
@@ -22,7 +31,7 @@ export class AppsyncEventsPublisher implements PricePublisher {
     private readonly channelPrefix: string,
     private readonly signer: RequestSigner = new SignatureV4({
       credentials: fromNodeProviderChain(),
-      region: REGION,
+      region: getRegion(),
       service: SERVICE,
       sha256: Sha256,
     }),

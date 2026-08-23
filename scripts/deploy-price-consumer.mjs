@@ -86,7 +86,10 @@ function applyRelease() {
   const playersTable = terraformOutput("players_table_name");
   const marketProducts = terraformOutput("market_products");
   const coinbaseChannels = terraformOutput("coinbase_channels");
-  const livePriceChannelPrefix = terraformOutput("live_price_event_channel_prefix");
+  const livePriceChannelPrefix = terraformOutput(
+    "live_price_event_channel_prefix",
+  );
+  const appSyncRegion = terraformOutput("aws_region");
 
   const password = run("aws", ["ecr", "get-login-password"], { capture: true });
   run("docker", ["login", "--username", "AWS", "--password-stdin", registry], {
@@ -142,6 +145,7 @@ function applyRelease() {
     marketProducts,
     coinbaseChannels,
     livePriceChannelPrefix,
+    appSyncRegion,
   );
   const taskDefinition = run(
     "aws",
@@ -223,12 +227,17 @@ function registrationForRelease(
         image,
         environment: [
           ["APPSYNC_EVENTS_ENDPOINT", liveEndpoint],
+          ["APPSYNC_REGION", appSyncRegion],
           ["BETS_TABLE", betsTable],
           ["PLAYERS_TABLE", playersTable],
           ["MARKET_PRODUCTS", marketProducts],
           ["COINBASE_CHANNELS", coinbaseChannels],
           ["APPSYNC_EVENTS_CHANNEL_PREFIX", livePriceChannelPrefix],
-        ].reduce((environment, [name, value]) => setEnvironmentVariable(environment, name, value), container.environment),
+        ].reduce(
+          (environment, [name, value]) =>
+            setEnvironmentVariable(environment, name, value),
+          container.environment,
+        ),
       };
     },
   );

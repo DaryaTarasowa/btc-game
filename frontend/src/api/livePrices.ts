@@ -1,5 +1,5 @@
 import { events } from "@aws-amplify/api";
-import type { MarketPrice } from "@/api/prices";
+import { type MarketPrice, marketPriceSchema } from "@/api/prices";
 import { marketConfig } from "@/config/market";
 
 export async function subscribeToLivePrices(
@@ -11,7 +11,14 @@ export async function subscribeToLivePrices(
 
   const subscription = channel.subscribe({
     next: (event) => {
-      onPrice(event.event as MarketPrice);
+      const parsed = marketPriceSchema.safeParse(event.event);
+
+      if (!parsed.success) {
+        console.error("Invalid live price event", parsed.error);
+        return;
+      }
+
+      onPrice(parsed.data);
     },
     error: (error) => {
       console.error("Live price subscription failed", error);
