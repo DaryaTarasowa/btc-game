@@ -9,12 +9,12 @@ const betButtonStyle = `
 
 const upButton = `
   ${betButtonStyle}
-  bg-success text-ink
+  bg-up text-ink
 `;
 
 const downButton = `
   ${betButtonStyle}
-  bg-error text-ink
+  bg-down text-ink
 `;
 
 interface BetButtonProps {

@@ -485,7 +485,7 @@ function ChartHeader({
           className="m-0 text-base font-extrabold tracking-[0.04em]"
           style={{ color: theme.colors.text }}
         >
-          <span style={{ color: theme.colors.accent }} aria-hidden="true">
+          <span style={{ color: theme.colors.graph }} aria-hidden="true">
             ₿
           </span>{" "}
           {product ? marketProductDisplayName(product) : "—"}

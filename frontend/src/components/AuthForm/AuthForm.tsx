@@ -93,7 +93,7 @@ export function AuthForm() {
         >
           {mode === "login" ? "Create an account" : "I already have an account"}
         </button>
-        {error && <p className="mt-3 text-sm text-error">{error}</p>}
+        {error && <p className="mt-3 text-sm text-danger">{error}</p>}
       </form>
     </>
   );

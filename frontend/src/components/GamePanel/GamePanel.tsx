@@ -77,10 +77,10 @@ export function GamePanel() {
 
       {activeBet && (
         <div
-          className={`${cardStyle} ${activeBet.direction === BetDirection.Up ? "border-success/40 text-success" : "border-error/40 text-error"} bg-ink`}
+          className={`${cardStyle} ${activeBet.direction === BetDirection.Up ? "border-up/40 text-up" : "border-down/40 text-down"} bg-ink`}
         >
           <span
-            className={`text-xs ${activeBet.direction === BetDirection.Up ? "text-success" : "text-error"} tracking-[0.12em] uppercase font-extrabold`}
+            className={`text-xs ${activeBet.direction === BetDirection.Up ? "text-up" : "text-down"} tracking-[0.12em] uppercase font-extrabold`}
           >
             {activeBet.direction.toUpperCase()} BET ACTIVE
           </span>
@@ -108,7 +108,7 @@ export function GamePanel() {
         }
         onChoose={onChoose}
       />
-      {creationError && <p className="mt-5.5 text-error">{creationError}</p>}
+      {creationError && <p className="mt-5.5 text-danger">{creationError}</p>}
 
       {infoModalOpen && <InfoModal onClose={() => setInfoModalOpen(false)} />}
     </>

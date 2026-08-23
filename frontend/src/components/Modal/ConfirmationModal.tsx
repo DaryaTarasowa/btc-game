@@ -26,10 +26,10 @@ export function ConfirmationModal({
   onCancel,
   onConfirm,
 }: ConfirmationModalProps) {
-  const confirmStyle = tone === "danger" ? "text-error" : "text-accent";
+  const confirmStyle = tone === "danger" ? "text-danger" : "text-accent";
 
   const borderStyle =
-    tone === "danger" ? "border-error/50" : "border-accent/50";
+    tone === "danger" ? "border-danger/50" : "border-accent/50";
 
   return (
     <Modal
@@ -41,7 +41,7 @@ export function ConfirmationModal({
       title={title}
       description={description}
     >
-      {error && <p className="mt-4 text-error">{error}</p>}
+      {error && <p className="mt-4 text-danger">{error}</p>}
 
       <div className="mt-7 flex gap-2.5">
         <button

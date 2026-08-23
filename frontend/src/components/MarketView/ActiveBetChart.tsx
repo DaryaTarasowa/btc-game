@@ -21,8 +21,8 @@ type ActiveBetChartConfig = Pick<
 function activeBetChartConfig(bet: ActiveBet): ActiveBetChartConfig {
   const color =
     bet.direction === BetDirection.Up
-      ? getThemeColor("--color-success")
-      : getThemeColor("--color-error");
+      ? getThemeColor("--color-up")
+      : getThemeColor("--color-down");
 
   const secondsRemaining = useBetCountdown(bet?.resolutionTargetTimestamp);
 

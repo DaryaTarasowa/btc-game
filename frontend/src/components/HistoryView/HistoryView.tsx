@@ -36,7 +36,7 @@ export function HistoryView() {
           {history.isPending ? (
             <p className={emptyStyle}>Loading completed predictions…</p>
           ) : history.isError ? (
-            <p className="mt-5.5 text-error">{history.error.message}</p>
+            <p className="mt-5.5 text-danger">{history.error.message}</p>
           ) : history.data.length === 0 ? (
             <p className={emptyStyle}>No completed predictions yet.</p>
           ) : (

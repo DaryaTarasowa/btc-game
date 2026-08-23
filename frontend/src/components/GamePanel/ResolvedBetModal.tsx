@@ -18,12 +18,12 @@ export function ResolvedBetModal({
 
   return (
     <Modal
-      className={`max-w-[980px] ${won ? "border-success/60" : "border-error/60"}`}
+      className={`max-w-[980px] border-accent/50`}
       origin={origin}
       onClose={onClose}
       eyebrow="BET RESOLVED"
       title={
-        <span className={won ? "text-success" : "text-error"}>
+        <span className={won ? "text-success" : "text-danger"}>
           {won ? "You won +1" : "You lost −1"}
         </span>
       }

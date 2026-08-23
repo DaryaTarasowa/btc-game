@@ -23,21 +23,21 @@ type HistoryBetChartConfig = Pick<
 export function historyBetChartConfig(bet: ResolvedBet): HistoryBetChartConfig {
   const directionColor =
     bet.direction === BetDirection.Up
-      ? getThemeColor("--color-success")
-      : getThemeColor("--color-error");
+      ? getThemeColor("--color-up")
+      : getThemeColor("--color-down");
 
   const resultColor =
     bet.result === BetResult.Won
       ? getThemeColor("--color-success")
-      : getThemeColor("--color-error");
+      : getThemeColor("--color-danger");
 
   const annotation = `${bet.result} ${bet.direction} prediction`;
 
   return {
     colors: {
       accent: resultColor,
-      graph: directionColor,
-      surface: resultColor,
+      graph: getThemeColor("--color-bitcoin"),
+      surface: getThemeColor("--color-ink"),
       border: resultColor,
       background: getThemeColor("--color-ink"),
     },

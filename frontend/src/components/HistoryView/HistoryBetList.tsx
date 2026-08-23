@@ -1,6 +1,6 @@
 import type { ResolvedBet } from "@/api/bets";
 import { HistoryBetChart } from "@/components/HistoryView/HistoryBetChart";
-import { BetResult } from "@/domain/bets";
+import { BetDirection, BetResult } from "@/domain/bets";
 import { buttonStyle } from "@/styles/ui";
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, {
@@ -21,6 +21,7 @@ interface HistoryBetItemProps {
 
 function HistoryBetItem({ bet, expanded, onToggle }: HistoryBetItemProps) {
   const won = bet.result === BetResult.Won;
+  const isUp = bet.direction === BetDirection.Up;
   const chartAction = expanded ? "Hide price chart" : "Show price chart";
 
   return (
@@ -32,13 +33,17 @@ function HistoryBetItem({ bet, expanded, onToggle }: HistoryBetItemProps) {
         onClick={onToggle}
       >
         <span
-          className={`text-xs font-black tracking-[0.08em] ${won ? "text-success" : "text-error"}`}
+          className={`text-xs font-black tracking-[0.08em] ${won ? "text-success" : "text-danger"}`}
         >
           {won ? "+1 WON" : "−1 LOST"}
         </span>
         <strong>
-          {bet.direction.toUpperCase()} · $
-          {Number(bet.startPrice).toLocaleString()}
+          <span className={`${isUp ? "text-up" : "text-down"}`}>
+            {bet.direction.toUpperCase()}
+          </span>{" "}
+          · ${Number(bet.startPrice).toLocaleString()}{" "}
+          <span className={won ? "text-success" : "text-danger"}>➜</span> $
+          {Number(bet.endPrice).toLocaleString()}
         </strong>
         <small className="text-muted max-[820px]:col-start-2">
           {dateFormatter.format(new Date(bet.startEventTimestamp))}

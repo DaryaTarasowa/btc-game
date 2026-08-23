@@ -3,7 +3,9 @@
 @theme {
   --color-accent: #ffc375;
   --color-success: #35d59a;
-  --color-error: #ff6877;
+  --color-danger: #ff6877;
+  --color-up: #35d59a;
+  --color-down: #ff6877;
   --color-ink: #0b0e16;
   --color-muted: #8490a9;
   --color-white: #ffffff;
