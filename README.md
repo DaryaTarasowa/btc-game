@@ -61,25 +61,14 @@ The application uses:
 
 The application is deployed to `eu-central-1`.
 
-The browser does not connect directly to Coinbase. A single long-running price consumer maintains the upstream WebSocket connection and converts incoming Coinbase messages into the application's internal market-price representation. That provides one authoritative market-data flow for persistence, bet resolution, and realtime clients.
-
-Market products are configured once through Terraform's `market_products`, `default_market_product`, `coinbase_channels`, and `live_price_channel_prefix` variables. The consumer subscribes to every configured product, while the frontend market context owns the currently selected product. Changing that context value switches the history query, live AppSync channel, bet product, and chart label together; bets are resolved only by events for their stored product.
-
 Terraform owns the long-lived infrastructure. Price-consumer application releases have a separate lifecycle: the release script builds and pushes an immutable Git-SHA image, registers a new ECS task-definition revision, and updates the ECS service. Terraform intentionally does not own the currently selected application revision, so an unrelated infrastructure apply cannot roll the running consumer back.
 
 ## User accounts
 
-Amazon Cognito provides email/password registration, login, logout, and durable sessions. Registrations are automatically confirmed by a minimal pre-sign-up trigger, so this demo does not require an email confirmation-code step.
-
-The Cognito `sub` claim is the authoritative player ID. API Gateway verifies the JWT before protected player and bet routes run. DynamoDB stores the player's username and score. The frontend never creates or persists its own player identity.
-
+Amazon Cognito provides email/password registration, login, logout, and durable sessions. Registrations are automatically confirmed by a minimal pre-sign-up trigger.
 The player record's optional `activeBetId` is the authoritative recovery pointer; the browser does not persist active-bet state. Each bet keeps the stable `(playerId, betId)` key from creation through resolution.
 
 The frontend waits until the bet's earliest resolution timestamp before checking its status, and polls once per second only while the backend still reports the bet as active. This avoids roughly 60 unnecessary requests during the first minute of every bet.
-
-The authenticated `/history` page lists completed bets whose retained market data can still reconstruct a chart, followed by a count of older hidden bets. The chart action loads five seconds before creation through five seconds after resolution from DynamoDB. The same reusable chart renders that static data with authoritative creation and resolution markers and does not attach the live-price subscription.
-
-The account menu supports logout and permanent account deletion.
 
 ## Repository
 
@@ -113,22 +102,7 @@ Install frontend dependencies:
 pnpm --dir frontend install
 ```
 
-The frontend reads its runtime/build configuration through Vite environment variables. For local development, create `frontend/.env.local` with values for the deployed backend and AppSync resources:
-
-```env
-VITE_CREATE_PLAYER_URL=...
-VITE_BETS_URL=...
-VITE_GET_PRICES_URL=...
-VITE_COGNITO_USER_POOL_ID=...
-VITE_COGNITO_USER_POOL_CLIENT_ID=...
-VITE_MARKET_PRODUCTS=BTC-USD
-VITE_DEFAULT_MARKET_PRODUCT=BTC-USD
-VITE_APPSYNC_EVENTS_CHANNEL_PREFIX=...
-VITE_APPSYNC_EVENTS_ENDPOINT=...
-VITE_APPSYNC_API_KEY=...
-```
-
-The deployment script obtains these values from Terraform outputs automatically; the local file is only needed when running Vite directly.
+The frontend reads its runtime/build configuration through Vite environment variables. For local development, create `frontend/.env.local` with values for the deployed backend and AppSync resources (`.env.example` is provided)
 
 Start the frontend:
 
@@ -143,7 +117,7 @@ pnpm --dir frontend build
 pnpm --dir frontend test
 ```
 
-The price consumer has its own package and can be built/tested independently:
+The price consumer has its own package and is built/tested independently:
 
 ```powershell
 pnpm --dir backend/price-consumer install
@@ -167,11 +141,9 @@ btc-game-developer
     -> Terraform creates least-privilege runtime roles with the required boundary
 ```
 
-The boundary is a maximum permission set; it does not grant permissions by itself. Terraform assigns each runtime role a workload-specific policy, and the role receives only permissions allowed by both that policy and the boundary.
+The boundary is a maximum permission set; it does not grant permissions by itself. The deployment user, its login configuration, the deployment policy, and the runtime boundary policy remain external bootstrap resources. Terraform does not create, import, update, or delete them.
 
-The deployment user, its login configuration, the deployment policy, and the runtime boundary policy remain external bootstrap resources. Terraform does not create, import, update, or delete them.
-
-The initial IAM setup must be performed once by an **AWS administrator**. If the deployment user and both bootstrap policies are already configured, skip to [Log in to AWS](#log-in-to-aws). Existing installations that predate the runtime boundary require one final administrator update before Terraform can migrate the current runtime roles onto the boundary.
+The initial IAM setup must be performed once by an **AWS administrator**. If the deployment user and both bootstrap policies are already configured, skip to [Log in to AWS](#log-in-to-aws). 
 
 <details>
 <summary>First-time IAM setup</summary>
@@ -215,7 +187,7 @@ The script verifies the active administrator identity, renders templates for the
 
 The script handles IAM's managed-policy version limit by deleting only the oldest non-default version when a version slot is required. Temporary rendered policy files are removed automatically. The options shown above are also the defaults, so `node scripts/bootstrap-aws.mjs` is equivalent.
 
-After this bootstrap, normal Terraform additions using the supported `btc-game-*` DynamoDB, Lambda, IAM runtime-role, ECS/Fargate, ECR, logging, API Gateway, and Amplify scopes do not require administrator intervention. Adding a new AWS service or expanding the maximum permissions available to runtime workloads still requires an administrator to review and update the external boundary or deployment policy.
+After this bootstrap, normal Terraform additions using the supported `btc-game-*` DynamoDB, Lambda, IAM runtime-role, ECS/Fargate, ECR, logging, API Gateway, and Amplify scopes **do not require administrator intervention**. Adding a new AWS service or expanding the maximum permissions available to runtime workloads still requires an administrator to review and update the external boundary or deployment policy.
 
 Existing deployments must rerun the bootstrap script once after adding the price-consumer infrastructure so Terraform can manage its dedicated outbound-only security group. This updates only the external deployment policy; the runtime boundary does not change.
 
@@ -228,31 +200,6 @@ Log in as the deployment user:
 ```powershell
 aws login --profile btc-game-developer
 ```
-
-Complete the sign-in flow in the browser and select the profile for the current PowerShell session:
-
-```bash
-export AWS_PROFILE="btc-game-developer"
-```
-
-or in PowerShell:
-
-```powershell
-$env:AWS_PROFILE = "btc-game-developer"
-```
-
-Verify the active identity:
-
-```powershell
-aws sts get-caller-identity
-```
-
-The returned ARN should identify the deployment user:
-
-```text
-arn:aws:iam::<account-id>:user/btc-game-developer
-```
-
 Keep using this session for the deployment commands below.
 
 ## Deploy
