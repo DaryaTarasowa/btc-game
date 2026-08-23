@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { GameControls } from "@/components/GamePanel/GameControls";
 import { usePlayer } from "@/context/usePlayer";
 import { BetDirection } from "@/domain/bets";
-import { useBetCountdown } from "@/queries/useBetCountdown";
+import { useBetCountdown } from "@/hooks/useBetCountdown";
 import { usePlayerScore } from "@/queries/usePlayerScore";
 import { Link } from "@tanstack/react-router";
 
@@ -13,9 +13,9 @@ export function GamePanel() {
   const { playerId } = usePlayer();
   const {
     activeBet,
-    creationError,
-    isCreating,
-    isRecovering,
+    betCreationError: creationError,
+    isBetCreating: isCreating,
+    isBetRecovering: isRecovering,
     latestVisiblePoint,
     chooseDirection: onChoose,
   } = useGameSession();

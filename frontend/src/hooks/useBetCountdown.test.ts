@@ -2,7 +2,7 @@
 
 import { afterEach, expect, test, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
-import { useBetCountdown } from "@/queries/useBetCountdown";
+import { useBetCountdown } from "@/hooks/useBetCountdown";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -27,10 +27,9 @@ test("counts down against the target timestamp and stops at zero", async () => {
 test("cleans up its interval when the target is removed", () => {
   vi.useFakeTimers();
   const clearInterval = vi.spyOn(window, "clearInterval");
-  const { rerender } = renderHook(
-    ({ target }) => useBetCountdown(target),
-    { initialProps: { target: "2026-08-21T12:01:00.000Z" as string | undefined } },
-  );
+  const { rerender } = renderHook(({ target }) => useBetCountdown(target), {
+    initialProps: { target: "2026-08-21T12:01:00.000Z" as string | undefined },
+  });
 
   rerender({ target: undefined });
   expect(clearInterval).toHaveBeenCalledOnce();

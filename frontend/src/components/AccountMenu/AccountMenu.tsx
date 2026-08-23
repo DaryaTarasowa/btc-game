@@ -5,7 +5,7 @@ import { usePlayer } from "@/context/usePlayer";
 import { buttonStyle } from "@/styles/ui";
 import { LoadingSpinner } from "@/components/LoadingSpinner/LoadingSpinner";
 
-export function AccountPanel() {
+export function AccountMenu() {
   const auth = usePlayer();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [pending, setPending] = useState(false);

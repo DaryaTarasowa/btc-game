@@ -1,6 +1,6 @@
 import { Link, Outlet } from "@tanstack/react-router";
 import { usePlayer } from "@/context/usePlayer";
-import { AccountPanel } from "@/components/AccountPanel/AccountPanel";
+import { AccountMenu } from "@/components/AccountMenu/AccountMenu";
 import { pageStyle } from "@/styles/ui";
 
 const navigationItemStyle =
@@ -41,7 +41,7 @@ export function AppLayout() {
               </Link>
             </>
           )}
-          <AccountPanel />
+          <AccountMenu />
         </nav>
       </header>
       <Outlet />

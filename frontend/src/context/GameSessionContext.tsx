@@ -17,10 +17,10 @@ export interface GameSessionValue {
   latestVisiblePoint?: MarketPrice;
   productName: string;
   pricesError: Error | null;
-  pricesPending: boolean;
-  creationError: string | undefined;
-  isCreating: boolean;
-  isRecovering: boolean;
+  isPricesPending: boolean;
+  betCreationError: string | undefined;
+  isBetCreating: boolean;
+  isBetRecovering: boolean;
   chooseDirection: (direction: BetDirection) => void;
 }
 
@@ -54,10 +54,10 @@ export function GameSessionProvider({ children }: PropsWithChildren) {
       latestVisiblePoint,
       productName: marketProductDisplayName(product),
       pricesError: recentPrices.error,
-      pricesPending: recentPrices.isPending,
-      creationError: createBet.error?.message,
-      isCreating: createBet.isPending,
-      isRecovering,
+      isPricesPending: recentPrices.isPending,
+      betCreationError: createBet.error?.message,
+      isBetCreating: createBet.isPending,
+      isBetRecovering: isRecovering,
       chooseDirection,
     }),
     [

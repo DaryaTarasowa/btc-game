@@ -6,7 +6,7 @@ import {
 import type { ActiveBet } from "@/api/bets";
 import { BetDirection } from "@/domain/bets";
 import { getThemeColor } from "@/utils";
-import { useBetCountdown } from "@/queries/useBetCountdown";
+import { useBetCountdown } from "@/hooks/useBetCountdown";
 
 type ActiveBetChartConfig = Pick<
   PriceChartProps,
@@ -78,7 +78,7 @@ export function ActiveBetChart({ bet }: { bet: ActiveBet }) {
 
   const {
     pricesError: error,
-    pricesPending: isPending,
+    isPricesPending: isPending,
     prices,
     productName,
   } = session;

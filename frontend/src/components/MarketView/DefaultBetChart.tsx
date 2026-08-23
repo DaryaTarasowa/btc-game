@@ -34,7 +34,7 @@ export function DefaultBetChart() {
 
   const {
     pricesError: error,
-    pricesPending: isPending,
+    isPricesPending: isPending,
     prices,
     productName,
   } = session;
