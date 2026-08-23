@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useMarket } from "@/context/useMarket";
 import { subscribeToLivePrices } from "@/api/livePrices";
 import { queryKeys } from "@/queryKeys";
@@ -31,9 +31,14 @@ export function useLivePrices() {
   const queryClient = useQueryClient();
   const { product } = useMarket();
 
+  const [connectionError, setConnectionError] = useState(false);
+  const [connectionKey, setConnectionKey] = useState(0);
+
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
     let isDisposed = false;
+
+    setConnectionError(false);
 
     void subscribeToLivePrices(product, (price) => {
       if (price.product !== product) return;
@@ -42,18 +47,34 @@ export function useLivePrices() {
         queryKeys.recentPrices(product),
         (current = []) => appendRecentPrice(current, price),
       );
-    }).then((cleanup) => {
-      if (isDisposed) {
-        cleanup();
-        return;
-      }
+    })
+      .then((cleanup) => {
+        if (isDisposed) {
+          cleanup();
+          return;
+        }
 
-      unsubscribe = cleanup;
-    });
+        unsubscribe = cleanup;
+      })
+      .catch((error) => {
+        if (isDisposed) return;
+
+        console.error("Failed to subscribe to live prices", error);
+        setConnectionError(true);
+      });
 
     return () => {
       isDisposed = true;
       unsubscribe?.();
     };
-  }, [product, queryClient]);
+  }, [product, queryClient, connectionKey]);
+
+  const reconnect = useCallback(() => {
+    setConnectionKey((key) => key + 1);
+  }, []);
+
+  return {
+    connectionError,
+    reconnect,
+  };
 }

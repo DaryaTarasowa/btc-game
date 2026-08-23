@@ -23,6 +23,8 @@ export interface GameSessionValue {
   isBetCreating: boolean;
   isBetRecovering: boolean;
   chooseDirection: (direction: BetDirection) => void;
+  livePricesError: boolean;
+  reconnectLivePrices: () => void;
 }
 
 export const GameSessionContext = createContext<GameSessionValue | null>(null);
@@ -31,7 +33,8 @@ export function GameSessionProvider({ children }: PropsWithChildren) {
   const { playerId, player } = usePlayer();
   const { product } = useMarket();
   const recentPrices = useRecentPrices();
-  useLivePrices();
+  const { connectionError: livePricesError, reconnect: reconnectLivePrices } =
+    useLivePrices();
 
   const prices = recentPrices.data ?? [];
   const latestVisiblePoint = prices.at(-1);
@@ -60,6 +63,8 @@ export function GameSessionProvider({ children }: PropsWithChildren) {
       isBetCreating: createBet.isPending,
       isBetRecovering: isRecovering,
       chooseDirection,
+      livePricesError,
+      reconnectLivePrices,
     }),
     [
       activeBet,
@@ -73,6 +78,8 @@ export function GameSessionProvider({ children }: PropsWithChildren) {
       recentPrices.error,
       recentPrices.isPending,
       resolvedBet,
+      livePricesError,
+      reconnectLivePrices,
     ],
   );
 

@@ -13,13 +13,15 @@ import {
   signOut,
   signUp,
 } from "aws-amplify/auth";
-import { deletePlayer, ensurePlayer, type Player } from "@/api/players";
 import { useQueryClient } from "@tanstack/react-query";
+
+import { deletePlayer, ensurePlayer, type Player } from "@/api/players";
 import { queryKeys } from "@/queryKeys";
 
 export interface PlayerContextValue {
   playerId: string | null;
   player: Player | null;
+  playerError: Error | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (
@@ -43,66 +45,122 @@ export function removePlayerQueries(
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
+
   const [player, setPlayer] = useState<Player | null>(null);
+  const [playerError, setPlayerError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const hydrate = useCallback(async () => {
     await getCurrentUser();
-    setPlayer(await ensurePlayer());
+    const hydratedPlayer = await ensurePlayer();
+
+    setPlayer(hydratedPlayer);
+    setPlayerError(null);
   }, []);
 
   useEffect(() => {
-    hydrate()
-      .catch(() => setPlayer(null))
-      .finally(() => setIsLoading(false));
-  }, [hydrate]);
+    const initialize = async () => {
+      try {
+        await getCurrentUser();
+      } catch {
+        setPlayer(null);
+        return;
+      }
+
+      try {
+        const hydratedPlayer = await ensurePlayer();
+        setPlayer(hydratedPlayer);
+        setPlayerError(null);
+      } catch (error) {
+        setPlayerError(
+          error instanceof Error ? error : new Error("Could not load player."),
+        );
+      }
+    };
+
+    void initialize().finally(() => setIsLoading(false));
+  }, []);
 
   const value = useMemo<PlayerContextValue>(
     () => ({
       playerId: player?.playerId ?? null,
       player,
+      playerError,
       isLoading,
+
       async login(email, password) {
-        const result = await signIn({ username: email, password });
-        if (!result.isSignedIn)
+        const result = await signIn({
+          username: email,
+          password,
+        });
+
+        if (!result.isSignedIn) {
           throw new Error("Additional sign-in steps are required.");
+        }
+
         await hydrate();
       },
+
       async register(email, password, username) {
         const result = await signUp({
           username: email,
           password,
-          options: { userAttributes: { email, preferred_username: username } },
+          options: {
+            userAttributes: {
+              email,
+              preferred_username: username,
+            },
+          },
         });
-        if (!result.isSignUpComplete)
+
+        if (!result.isSignUpComplete) {
           throw new Error("Account creation could not be completed.");
-        const loginResult = await signIn({ username: email, password });
-        if (!loginResult.isSignedIn)
+        }
+
+        const loginResult = await signIn({
+          username: email,
+          password,
+        });
+
+        if (!loginResult.isSignedIn) {
           throw new Error(
             "Account was created, but sign-in could not be completed.",
           );
+        }
+
         await hydrate();
       },
+
       async logout() {
         const departingPlayerId = player?.playerId;
+
         await signOut();
+
         if (departingPlayerId) {
           removePlayerQueries(queryClient, departingPlayerId);
         }
+
         setPlayer(null);
+        setPlayerError(null);
       },
+
       async deleteAccount() {
         const departingPlayerId = player?.playerId;
+
         await deletePlayer();
         await deleteUser();
+
         if (departingPlayerId) {
           removePlayerQueries(queryClient, departingPlayerId);
         }
+
         setPlayer(null);
+        setPlayerError(null);
       },
     }),
-    [hydrate, isLoading, player, queryClient],
+    [hydrate, isLoading, player, playerError, queryClient],
   );
+
   return (
     <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>
   );

@@ -16,6 +16,7 @@ type ActiveBetChartConfig = Pick<
   | "visibleRange"
   | "annotation"
   | "subtitle"
+  | "headlineLabel"
 >;
 
 function activeBetChartConfig(bet: ActiveBet): ActiveBetChartConfig {
@@ -81,6 +82,8 @@ export function ActiveBetChart({ bet }: { bet: ActiveBet }) {
     isPricesPending: isPending,
     prices,
     productName,
+    livePricesError,
+    reconnectLivePrices,
   } = session;
 
   const chartConfig = activeBetChartConfig(bet);
@@ -97,6 +100,19 @@ export function ActiveBetChart({ bet }: { bet: ActiveBet }) {
         visibleRange={chartConfig?.visibleRange}
         annotation={chartConfig?.annotation}
         subtitle={chartConfig?.subtitle}
+        headlineLabel={
+          livePricesError ? (
+            <button
+              type="button"
+              onClick={reconnectLivePrices}
+              className="cursor-pointer text-sm text-danger transition hover:text-white"
+              title="Reconnect live prices"
+              aria-label="Reconnect live prices"
+            >
+              ↻ Reconnect
+            </button>
+          ) : undefined
+        }
         messages={{
           loading: (
             <>

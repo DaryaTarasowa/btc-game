@@ -37,6 +37,8 @@ export function DefaultBetChart() {
     isPricesPending: isPending,
     prices,
     productName,
+    livePricesError,
+    reconnectLivePrices,
   } = session;
 
   return (
@@ -46,6 +48,19 @@ export function DefaultBetChart() {
         isPending={isPending}
         error={error}
         colors={defaultBetChartConfig().colors}
+        headlineLabel={
+          livePricesError ? (
+            <button
+              type="button"
+              onClick={reconnectLivePrices}
+              className="cursor-pointer text-sm text-danger transition hover:text-white"
+              title="Reconnect live prices"
+              aria-label="Reconnect live prices"
+            >
+              ↻ Reconnect
+            </button>
+          ) : undefined
+        }
         subtitle="Stored market history · 3 min"
         messages={{
           loading: (

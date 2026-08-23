@@ -9,8 +9,40 @@ import { usePlayer } from "@/context/usePlayer";
 import { panelStyle, pageStyle } from "@/styles/ui";
 import { LoadingSpinner } from "./LoadingSpinner/LoadingSpinner";
 
+function PlayerPanelContent() {
+  const { playerId, isLoading, playerError } = usePlayer();
+
+  if (isLoading) {
+    return (
+      <div className="grid min-h-48 place-items-center">
+        <LoadingSpinner color="var(--color-accent)" size={50} />
+      </div>
+    );
+  }
+
+  if (playerError) {
+    return (
+      <div className="grid min-h-48 place-items-center text-center">
+        <div>
+          <strong className="block text-error">
+            Could not load your player
+          </strong>
+          <span className="mt-2 block text-sm text-muted">
+            Please reload the page and try again.
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  if (playerId) {
+    return <GamePanel />;
+  }
+
+  return <AuthForm />;
+}
+
 function GameWorkspace() {
-  const { playerId, isLoading } = usePlayer();
   const session = useGameSession();
   const contentPanelRef = useRef<HTMLDivElement>(null);
 
@@ -39,15 +71,7 @@ function GameWorkspace() {
       className={`${pageStyle} grid grid-cols-[minmax(260px,0.72fr)_minmax(0,1.8fr)] items-start gap-6 max-[820px]:grid-cols-1`}
     >
       <section className={`${panelStyle} relative max-[820px]:text-left`}>
-        {isLoading ? (
-          <div className="grid min-h-48 place-items-center">
-            <LoadingSpinner color="var(--color-accent)" size={50} />
-          </div>
-        ) : playerId ? (
-          <GamePanel />
-        ) : (
-          <AuthForm />
-        )}
+        <PlayerPanelContent />
       </section>
 
       <div className="min-w-0" ref={contentPanelRef}>
